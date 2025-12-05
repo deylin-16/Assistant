@@ -13,7 +13,6 @@ global.owner = [
 ]; 
 
 global.suittag = ['50432955554'] 
-global.sessions = 'Sessions'
 global.packname = '🎅🎄 𝙺𝚒𝚛𝚒𝚝𝚘-𝙱𝚘𝚝 𝙼𝙳 ✨⛄';
 global.botname = '🎁 𝗞𝗜𝗥𝗜𝗧𝗢-𝗕𝗢𝗧 𝗠𝗗 ⛄★.°🦌';
 global.author = '🎄 𝑴𝒂𝒅𝒆 𝑩𝒚 𝑬𝒍𝒊𝒂𝒄 🎅❄️';
