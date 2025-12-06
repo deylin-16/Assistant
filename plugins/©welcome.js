@@ -88,7 +88,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
       currencyCode: 'USD',
       priceAmount1000: '0',
       retailerId: 1677,
-      url: `${botname}`,
+      url: `thbj`,
       productImageCount: 1
     },
     businessOwnerJid: who || '0@s.whatsapp.net',
