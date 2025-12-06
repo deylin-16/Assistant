@@ -9,11 +9,10 @@ export async function before(m, { conn, participants, groupMetadata }) {
     let img = 'https://i.ibb.co/Psj3rJmR/Texto-del-p-rrafo-20251206-140954-0000.png'
     const chat = global.db?.data?.chats?.[m.chat] || {}
 
-    // Lógica de detección corregida
-    const isWelcomeEvent = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD || 
-                           m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_JOIN;
-                           
-    if (isWelcomeEvent && chat.welcome !== false) {
+    const isAdd = m.messageStubType == 27
+    const isJoin = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_JOIN
+    
+    if (chat.welcome && (isAdd || isJoin)) {
 
         let ppGroup = null 
         try {
@@ -24,7 +23,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
         const mentionListText = `@${who.split("@")[0]}` 
         
-        let welcomeText = chat.customWelcome || "Bienvenido/a al grupo @user"
+        let welcomeText = chat.customWelcome || "hola bienvenido @user"
         
         welcomeText = welcomeText.replace(/\\n/g, '\n')
         let finalCaption = welcomeText.replace(/@user/g, mentionListText) 
