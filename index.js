@@ -38,7 +38,7 @@ const {chain} = lodash
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000
 
 global.sessions = 'sessions'
-global.botNumber = '50488198573'
+global.botNumber = ''
 
 let { say } = cfonts
 
@@ -76,7 +76,7 @@ const __dirname = global.__dirname(import.meta.url)
 global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
 global.prefix = new RegExp('^[#/!.]')
 
-global.db = new Low(/https?:\/\//.test(global.opts['db'] || '') ? new cloudDBAdapter(global.opts['db']) : new JSONFile('./lib/1.json'))
+global.db = new Low(/https?:\/\//.test(global.opts['db'] || '') ? new cloudDBAdapter(global.opts['db']) : new JSONFile('./src/database/database.json'))
 
 global.DATABASE = global.db 
 global.loadDatabase = async function loadDatabase() {
@@ -146,9 +146,6 @@ global.conn = makeWASocket(connectionOptions);
 if (!fs.existsSync(`./${global.sessions}/creds.json`)) {
 if (!conn.authState.creds.registered) {
 let addNumber
-if (!!phoneNumber) {
-addNumber = phoneNumber.replace(/[^0-9]/g, '')
-} else {
 do {
 phoneNumber = await question(chalk.bgBlack(chalk.bold.greenBright(` Por favor, Ingrese el número de WhatsApp.\n${chalk.bold.yellowBright(` Ejemplo: 57321×××××××`)}\n${chalk.bold.magentaBright('---> ')}`)))
 phoneNumber = phoneNumber.replace(/\D/g,'')
@@ -163,7 +160,7 @@ let codeBot = await conn.requestPairingCode(addNumber)
 codeBot = codeBot?.match(/.{1,4}/g)?.join("-") || codeBot
 console.log(chalk.bold.white(chalk.bgMagenta(` CÓDIGO DE VINCULACIÓN `)), chalk.bold.white(chalk.white(codeBot)))
 }, 3000)
-}}}
+}}
 
 
 conn.isInit = false;
