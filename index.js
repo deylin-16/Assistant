@@ -11,7 +11,7 @@ import { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, readFileSync,
 import yargs from 'yargs';
 import { spawn, execSync } from 'child_process';
 import lodash from 'lodash';
-import './plugins/main-allfake.js';
+import { JadiBot } from './plugins/jadibot-serbot.js';
 import chalk from 'chalk';
 import syntaxerror from 'syntax-error';
 import { tmpdir } from 'os';
@@ -31,7 +31,6 @@ const phoneUtil = PhoneNumberUtil.getInstance();
 const { DisconnectReason, useMultiFileAuthState, MessageRetryMap, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, jidNormalizedUser, Browsers } = await import('@whiskeysockets/baileys');
 import readline, { createInterface } from 'readline';
 import NodeCache from 'node-cache';
-import sharp from 'sharp';
 const { CONNECTING } = ws;
 const { chain } = lodash;
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
@@ -43,7 +42,7 @@ say('Bot', {
   align: 'left',
   gradient: ['green', 'white']
 });
-say('developed by Eliac', {
+say('developed by Dulce', {
   font: 'console',
   align: 'center',
   colors: ['cyan', 'magenta', 'yellow']
@@ -164,59 +163,6 @@ const connectionOptions = {
 };
 
 global.conn = makeWASocket(connectionOptions);
-
-const WATERMARK_PATH = path.join(__dirname, 'watermark.png');
-const WATERMARK_WIDTH_PX = 150;
-let watermarkBuffer;
-try {
-    if (existsSync(WATERMARK_PATH)) {
-        watermarkBuffer = readFileSync(WATERMARK_PATH);
-        console.log(chalk.bold.green(`\n[WATERMARK] Archivo 'watermark.png' cargado con éxito.`));
-    } else {
-        console.log(chalk.bold.red(`\n[WATERMARK ERROR] ¡ATENCIÓN! Falta el archivo 'watermark.png' en la raíz.`));
-    }
-} catch (e) {
-    console.error(chalk.bold.red(`[WATERMARK ERROR] Error al leer watermark.png:`), e);
-}
-
-async function aplicarMarcaDeAgua(inputImageBuffer) {
-    if (!watermarkBuffer) return inputImageBuffer;
-    
-    try {
-        const resizedWatermarkBuffer = await sharp(watermarkBuffer)
-            .resize(WATERMARK_WIDTH_PX, null, { fit: 'contain' })
-            .toBuffer();
-
-        const outputBuffer = await sharp(inputImageBuffer)
-            .composite([{
-                input: resizedWatermarkBuffer,
-                gravity: sharp.gravity.northwest,
-            }])
-            .toBuffer();
-        
-        return outputBuffer;
-    } catch (error) {
-        console.error(chalk.bold.red(`[WATERMARK ERROR] Fallo Sharp al aplicar marca de agua:`), error);
-        return inputImageBuffer;
-    }
-}
-
-const sendMessageOriginal = conn.sendMessage;
-
-conn.sendMessage = async (jid, content, options = {}) => {
-    
-    if (content && content.image instanceof Buffer) {
-        
-        const imagenFinalBuffer = await aplicarMarcaDeAgua(content.image);
-
-        content.image = imagenFinalBuffer;
-    }
-    
-    return sendMessageOriginal(jid, content, options);
-};
-
-console.log(chalk.bold.cyan("✅ [WATERMARK] La función 'conn.sendMessage' ha sido modificada para marcar todas las imágenes."));
-
 if (!existsSync(`./${sessions}/creds.json`)) {
   if (opcion === '2' || methodCode) {
     opcion = '2';
@@ -454,10 +400,29 @@ if (!existsSync(rtU)) {
   mkdirSync(rtU, { recursive: true });
 }
 
-
-
+global.rutaJadiBot = join(__dirname, `./${jadi}`);
+if (global.Jadibts) {
+  if (!existsSync(global.rutaJadiBot)) {
+    mkdirSync(global.rutaJadiBot, { recursive: true });
+    console.log(chalk.bold.cyan(`⍰ La carpeta: ${jadi} se creó correctamente.`));
+  } else {
+    console.log(chalk.bold.cyan(`⍰ La carpeta: ${jadi} ya está creada.`));
+  }
+  const readRutaJadiBot = readdirSync(rutaJadiBot);
+  if (readRutaJadiBot.length > 0) {
+    const creds = 'creds.json';
+    for (const gjbts of readRutaJadiBot) {
+      const botPath = join(rutaJadiBot, gjbts);
+      const readBotPath = readdirSync(botPath);
+      if (readBotPath.includes(creds)) {
+        JadiBot({ pathJadiBot: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' });
+      }
+    }
+  }
+}
 
 const pluginFolder = join(__dirname, './plugins');
+
 const pluginFilter = (filename) => /\.js$/.test(filename);
 global.plugins = {};
 
@@ -470,14 +435,13 @@ async function readRecursive(folder) {
       await readRecursive(file);
     } else if (pluginFilter(filename)) {
       try {
-        const pluginKey = path.relative(pluginFolder, file).replace(/\\/g, '/');
-        if (global.plugins[pluginKey]) delete global.plugins[pluginKey];
-        const module = await import(`${global.__filename(file)}?update=${Date.now()}`);
-        global.plugins[pluginKey] = module.default || module;
+        const pluginPath = file.replace(pluginFolder + '/', '');
+        const module = await import(global.__filename(file));
+        global.plugins[pluginPath] = module.default || module;
       } catch (e) {
         conn.logger.error(`Error al cargar el plugin '${filename}':`);
         conn.logger.error(e);
-        delete global.plugins[path.relative(pluginFolder, file).replace(/\\/g, '/')];
+        delete global.plugins[filename];
       }
     }
   }
@@ -485,51 +449,41 @@ async function readRecursive(folder) {
 
 async function filesInit() {
   await readRecursive(pluginFolder);
-  global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
 
-
 global.reload = async (_ev, filename) => {
-    const relativePath = path.relative(pluginFolder, filename);
-    const pluginKey = relativePath.replace(/\\/g, '/');
-    const absolutePath = join(pluginFolder, relativePath);
-
-    if (pluginFilter(pluginKey)) {
-        const dir = global.__filename(absolutePath);
-
-        if (existsSync(absolutePath)) {
-            conn.logger.info(` updated plugin - '${pluginKey}'`);
-        } else {
-            conn.logger.warn(`deleted plugin - '${pluginKey}'`);
-            delete global.plugins[pluginKey];
-            return;
-        }
-
-        const err = syntaxerror(readFileSync(dir, 'utf8'), pluginKey, {
-            sourceType: 'module',
-            allowAwaitOutsideFunction: true,
-        });
-
-        if (err) conn.logger.error(`syntax error while loading '${pluginKey}'\n${format(err)}`);
-        else {
-            try {
-                const module = (await import(`${dir}?update=${Date.now()}`));
-                global.plugins[pluginKey] = module.default || module;
-            } catch (e) {
-                conn.logger.error(`error require plugin '${pluginKey}\n${format(e)}'`);
-            } finally {
-                global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
-            }
-        }
+  const pluginPath = filename.replace(pluginFolder + '/', ''); // Usar la ruta completa
+  if (pluginFilter(filename)) {
+    const dir = global.__filename(join(pluginFolder, filename), true);
+    if (pluginPath in global.plugins) {
+      if (existsSync(dir)) conn.logger.info(` updated plugin - '${pluginPath}'`);
+      else {
+        conn.logger.warn(`deleted plugin - '${pluginPath}'`);
+        return delete global.plugins[pluginPath];
+      }
+    } else conn.logger.info(`new plugin - '${pluginPath}'`);
+    const err = syntaxerror(readFileSync(dir), filename, {
+      sourceType: 'module',
+      allowAwaitOutsideFunction: true,
+    });
+    if (err) conn.logger.error(`syntax error while loading '${pluginPath}'\n${format(err)}`);
+    else {
+      try {
+        const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
+        global.plugins[pluginPath] = module.default || module;
+      } catch (e) {
+        conn.logger.error(`error require plugin '${pluginPath}\n${format(e)}'`);
+      } finally {
+        global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
+      }
     }
+  }
 };
 
 Object.freeze(global.reload);
 watch(pluginFolder, { recursive: true }, global.reload);
-
-
 await global.reloadHandler();
 async function _quickTest() {
   const test = await Promise.all([
