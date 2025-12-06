@@ -53,7 +53,10 @@ export async function before(m, { conn }) {
 
     const chat = global.db?.data?.chats?.[m.chat] || {}
 
-    if (m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD && chat.welcome !== false) {
+    const isWelcomeEvent = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD || 
+                           m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_JOIN;
+                           
+    if (isWelcomeEvent && chat.welcome !== false) {
 
         conn.welcomeBatch = conn.welcomeBatch || {}
         const jid = m.chat
