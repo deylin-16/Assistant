@@ -66,7 +66,7 @@ var handler = async (m, { conn, text, participants, isAdmin }) => {
 
 handler.help = ['notificar'];
 handler.tags = ['grupo'];
-handler.command = ['hidetag', 'notificar', 'notify', 'tagall', 'ntg'];
+handler.command = ['tag', 'n'];
 handler.group = true;
 handler.admin = true;
 
