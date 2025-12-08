@@ -16,6 +16,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
     const totalMembers = participants.length
     const user = participants.find(p => p.jid === who)
+    const userName = user?.notify || who.split('@')[0]
     const mentionListText = `@${who.split('@')[0]}`
 
     let ppUrl
@@ -29,38 +30,36 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
     const welcomeText = chat.customWelcome
     let finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText).trim()
+    finalCaption = `\n${finalCaption}` 
 
     const jid = m.chat
-    const mentionId = who ? [who] : []
-    
-    let thumbnailBuffer
-    try {
-        const res = await fetch(ppUrl)
-        thumbnailBuffer = await res.buffer()
-    } catch {
-        const defaultRes = await fetch(defaultPp)
-        thumbnailBuffer = await defaultRes.buffer()
+
+    const productMessage = {
+        product: {
+            productImage: { url: ppUrl },
+            productId: '2452968910',
+            title: `¡BIENVENIDO! Ahora somos ${totalMembers} miembros`,
+            description: `Grupo: ${groupMetadata.subject}`,
+            currencyCode: 'USD',
+            priceAmount1000: '0',
+            retailerId: 1677,
+            url: `hola`,
+            productImageCount: 1
+        },
+        businessOwnerJid: who || '0@s.whatsapp.net',
+
+        caption: finalCaption,
+        title: 'gati',
+        subtitle: '',
+
+        
+        footer: `¡Bienvenido ${userName}!`, 
+        mentions: who ? [who] : []
     }
 
-    const fullText = `*¡BIENVENIDO!* Ahora somos ${totalMembers} miembros.\n\n` + finalCaption
-
-    await conn.sendMessage(jid, {
-        text: fullText,
-        contextInfo: {
-            mentionedJid: mentionId,
-            externalAdReply: {
-                title: `¡BIENVENIDO!`,
-                body: `Total de miembros: ${totalMembers}`,
-                mediaType: 1,
-                mediaUrl: ppUrl, 
-                sourceUrl: 'https://whatsapp.com', 
-                thumbnail: thumbnailBuffer,
-                showAdAttribution: false,
-                containsAutoReply: true,
-                renderLargerThumbnail: true
-            }
-        }
-    }, {
-        quoted: null
+    const mentionId = who ? [who] : []
+    await conn.sendMessage(jid, productMessage, {
+        quoted: null,
+        contextInfo: { mentionedJid: mentionId }
     })
 }
