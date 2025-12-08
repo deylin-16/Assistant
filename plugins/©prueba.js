@@ -21,27 +21,20 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
     let ppUrl
     const defaultPp = 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
-    
+
     try {
         ppUrl = await conn.profilePictureUrl(who, 'image')
     } catch {
         ppUrl = defaultPp
     }
+
     
     const welcomeText = chat.customWelcome
-    const finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText)
-
-    let fkontak
-    try {
-        const res2 = await fetch('https://i.postimg.cc/c4t9wwCw/1756162596829.jpg')
-        const img3 = Buffer.from(await res2.arrayBuffer())
-        fkontak = {
-            key: { fromMe: false, participant: "0@s.whatsapp.net" },
-            message: { locationMessage: { name: `BIENVENIDO ${userName}`, jpegThumbnail: img3 } }
-        }
-    } catch (e) {
-        console.error(e)
-    }
+    
+    let finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText)
+    
+    
+    finalCaption = `\n${finalCaption}` 
 
     const jid = m.chat
 
@@ -58,16 +51,18 @@ export async function before(m, { conn, participants, groupMetadata }) {
             productImageCount: 1
         },
         businessOwnerJid: who || '0@s.whatsapp.net',
-        caption: finalCaption.trim(),
+        
+        caption: finalCaption.trim(), 
         title: 'gati',
         subtitle: '',
-        footer: finalCaption.replace(/\n/g, ' ').slice(0, 1000000000000) + '...',
+        
+        footer: finalCaption.replace(/\n/g, ' ').slice(0, 100) + '...', 
         mentions: who ? [who] : []
     }
 
     const mentionId = who ? [who] : []
     await conn.sendMessage(jid, productMessage, {
-        quoted: fkontak,
+        quoted: null,
         contextInfo: { mentionedJid: mentionId }
     })
 }
