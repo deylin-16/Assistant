@@ -6,7 +6,6 @@ export async function before(m, { conn, participants, groupMetadata }) {
     if (botSettings.soloParaJid) return
     if (!m.messageStubType || !m.isGroup) return true
 
-    const totalMembers = participants.length
     const who = m.messageStubParameters?.[0]
     if (!who) return
 
@@ -15,8 +14,8 @@ export async function before(m, { conn, participants, groupMetadata }) {
     const chat = global.db.data.chats[m.chat]
     if (!chat?.welcome || !chat?.customWelcome) return
 
+    const totalMembers = participants.length
     const user = participants.find(p => p.jid === who)
-    const userName = user?.notify || who.split('@')[0]
     const mentionListText = `@${who.split('@')[0]}`
 
     let ppUrl
@@ -28,41 +27,19 @@ export async function before(m, { conn, participants, groupMetadata }) {
         ppUrl = defaultPp
     }
 
-
     const welcomeText = chat.customWelcome
-
-    let finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText)
-
-
-    finalCaption = `\n${finalCaption}` 
+    let finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText).trim()
 
     const jid = m.chat
-
-    const productMessage = {
-        product: {
-            productImage: { url: ppUrl },
-            productId: '2452968910',
-            title: `¡BIENVENIDO! Ahora somos ${totalMembers} miembros`,
-            description: `Grupo: ${groupMetadata.subject}`,
-            currencyCode: 'USD',
-            priceAmount1000: '0',
-            retailerId: 1677,
-            url: `hola`,
-            productImageCount: 1
-        },
-        businessOwnerJid: who || '0@s.whatsapp.net',
-
-        caption: ${finalCaption}`.trim(), 
-        title: 'gati',
-        subtitle: '',
-
-        footer: finalCaption.replace(/\n/g, ' ').slice(0, 10000000000000) + '.', 
-        mentions: who ? [who] : []
-    }
-
     const mentionId = who ? [who] : []
-    await conn.sendMessage(jid, productMessage, {
-        quoted: null,
+    const fullText = `*¡BIENVENIDO!* Ahora somos ${totalMembers} miembros.\n\n` +
+                     `_Foto de perfil de ${userName}:_\n${ppUrl}\n\n` +
+                     finalCaption
+                     
+    await conn.sendMessage(jid, {
+        text: fullText,
         contextInfo: { mentionedJid: mentionId }
+    }, {
+        quoted: null
     })
 }
