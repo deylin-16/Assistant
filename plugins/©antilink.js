@@ -6,25 +6,22 @@ export async function before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, 
   if (!m.isGroup) return 
 
   if (!global.db.data.users[m.sender]) global.db.data.users[m.sender] = {}
-    
+
   let chat = global.db.data.chats[m.chat]
   let user = global.db.data.users[m.sender]
-
-  //if (!chat.antiLink) return
 
   if (isAdmin || isOwner || m.fromMe || isROwner) return
 
   const delet = m.key.participant
   const bang = m.key.id
   const mentionUser = `@${m.sender.split`@`[0]}`
-  const groupAdmins = participants.filter(p => p.admin)
   const isGroupLink = linkRegex.exec(m.text) || linkRegex1.exec(m.text)
   const isChannelLink = m?.msg?.contextInfo?.forwardedNewsletterMessageInfo
 
   user.warnAntiLink = user.warnAntiLink || 0 
 
   if ((isChannelLink || isGroupLink) && !isAdmin) {
-    
+
     if (isGroupLink && isBotAdmin) {
       const linkThisGroup = `https://chat.whatsapp.com/${await conn.groupInviteCode(m.chat)}`
       if (m.text.includes(linkThisGroup)) return !0
@@ -32,9 +29,13 @@ export async function before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, 
 
     try {
       if (isBotAdmin) {
-
-        await conn.sendMessage(m.chat, { delete: { remoteJid: m.chat, fromMe: false, id: bang, participant: delet } })
         
+        try {
+            await conn.sendMessage(m.chat, { delete: { remoteJid: m.chat, fromMe: false, id: bang, participant: delet } })
+        } catch (e) {
+            console.error(e.message)
+        }
+
         user.warnAntiLink += 1
         let currentWarnings = user.warnAntiLink
         const maxWarnings = 3
@@ -75,7 +76,7 @@ El bot no es administrador, pero un admin podría verte y eliminarte del grupo. 
         console.log('⚠️ Rate limit detectado, esperando 10s...')
         await delay(10000)
       } else {
-        console.error('❌ Error en antilink con advertencias:', e.message)
+        console.error('❌ Error fatal en antilink con advertencias:', e.message)
       }
     }
     return !0
