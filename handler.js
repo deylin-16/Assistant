@@ -349,6 +349,9 @@ function smsg(conn, m, store) {
     m.fromMe = m.key.fromMe;
     m.sender = conn.normalizeJid(m.key.fromMe ? conn.user.jid : m.key.participant || m.key.remoteJid);
     m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
+    // CORRECCIÓN CLAVE: Asegurar que el texto sea una cadena y que mentionedJid sea un array.
+    m.text = m.text ? m.text.replace(/[\u200e\u200f]/g, '').trim() : ''; 
+    m.mentionedJid = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || []; 
     m.isGroup = m.chat.endsWith('@g.us');
     m.isMedia = !!(m.message?.imageMessage || m.message?.videoMessage || m.message?.audioMessage || m.message?.stickerMessage || m.message?.documentMessage);
     m.timestamp = typeof m.messageTimestamp === 'number' ? m.messageTimestamp * 1000 : null;
