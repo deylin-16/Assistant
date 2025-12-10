@@ -4,7 +4,7 @@ import path, { join } from 'path';
 import { unwatchFile, watchFile } from 'fs';
 import chalk from 'chalk';
 import ws from 'ws';
-import { randomBytes } from 'crypto'; // <-- Nueva importación para IDs
+import { randomBytes } from 'crypto';
 import fetch from 'node-fetch';
 
 const isNumber = x => typeof x === 'number' && !isNaN(x);
@@ -15,7 +15,7 @@ async function getLidFromJid(id, connection) {
     return res[0]?.lid || id;
 }
 
-export async function handler(chatUpdate, store) { // Añadimos 'store' como argumento
+export async function handler(chatUpdate, store) {
     this.uptime = this.uptime || Date.now();
     const conn = this;
 
@@ -26,7 +26,6 @@ export async function handler(chatUpdate, store) { // Añadimos 'store' como arg
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     if (!m) return;
 
-    // AHORA LLAMAMOS A LA FUNCIÓN smsg LOCALMENTE
     m = smsg(conn, m, store) || m; 
     if (!m) return;
 
@@ -325,7 +324,6 @@ export async function handler(chatUpdate, store) { // Añadimos 'store' como arg
     }
 }
 
-// Función smsg movida desde simple.js
 function smsg(conn, m, store) {
     if (!m) return m;
 
@@ -358,9 +356,6 @@ function smsg(conn, m, store) {
         q.sender = conn.normalizeJid(q.key.fromMe ? conn.user.jid : q.key.participant || q.key.remoteJid);
         q.text = q.message?.extendedTextMessage?.text || q.message?.conversation || q.message?.imageMessage?.caption || q.message?.videoMessage?.caption || '';
     }
-
-    // Nota: m.reply y m.getQuotedObj NO se pueden definir aquí,
-    // deben definirse usando protoType() en index.js.
 
     return m;
 }
