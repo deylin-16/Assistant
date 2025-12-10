@@ -24,8 +24,9 @@ export async function handler(chatUpdate, store) {
     }
 
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
-    if (!m) return;
     
+    if (!m || !m.key || !m.message) return;
+
     if (m.message) {
         m.message = (Object.keys(m.message)[0] === 'ephemeralMessage') ? m.message.ephemeralMessage.message : m.message;
         if (m.message.extendedTextMessage) {
@@ -34,6 +35,7 @@ export async function handler(chatUpdate, store) {
     }
 
     m = smsg(conn, m, store) || m; 
+    
     if (!m) return;
 
     if (global.db.data == null) {
