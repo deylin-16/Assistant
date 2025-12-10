@@ -35,9 +35,10 @@ export async function handler(chatUpdate, store) {
         }
     }
 
+    // smsg ahora tiene try/catch interno para evitar colapsos
     m = smsg(conn, m, store) || m; 
     
-    if (!m) return; // Captura cualquier fallo de smsg
+    if (!m) return; // Captura cualquier fallo de smsg y descarta el objeto
 
     if (global.db.data == null) {
         await global.loadDatabase();
@@ -374,7 +375,7 @@ function smsg(conn, m, store) {
         return m;
         
     } catch (e) {
-        // CAPTURA DE FALLOS Y LOG DE DEBUG
+        // Captura el objeto inválido y lo registra sin colapsar el bot
         console.error("Error en smsg - Objeto 'm' inválido:", m, e); 
         return null;
     }
