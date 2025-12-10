@@ -116,7 +116,7 @@ export async function handler(chatUpdate) {
         if (m.isGroup) {
             groupMetadata = (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {};
             participants = groupMetadata.participants || [];
-            
+
             [senderLid, botLid] = await Promise.all([
                 getLidFromJid(m.sender, conn),
                 getLidFromJid(botJid, conn)
@@ -172,7 +172,6 @@ export async function handler(chatUpdate) {
             const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
             let _prefix = plugin.customPrefix ? plugin.customPrefix : conn.prefix ? conn.prefix : global.prefix;
 
-            // --- 1. DETECCIÓN POR PREFIJO TRADICIONAL ---
             const prefixes = Array.isArray(_prefix) ? _prefix : [_prefix];
 
             for (const p of prefixes) {
@@ -184,7 +183,6 @@ export async function handler(chatUpdate) {
                 }
             }
 
-            // --- 2. PROCESAMIENTO INICIAL DEL COMANDO ---
             if (match) {
                 usedPrefix = match[0][0];
                 const noPrefix = m.text.replace(usedPrefix, '');
@@ -192,14 +190,12 @@ export async function handler(chatUpdate) {
                 text = args.join(' ');
                 command = (command || '').toLowerCase();
             } else {
-                
-                // --- 3. DETECCIÓN SIN PREFIJO (Mención o Respuesta) ---
-                
+
                 let isNewDetection = false;
-                
+
                 const isMentioned = m.mentionedJid.includes(botJid) || m.text.startsWith('@' + botJid.split('@')[0]);
                 const isQuotedByBot = m.quoted && m.quoted.sender === botJid;
-                
+
                 if (isMentioned) {
                     const noMentionText = m.text.replace(new RegExp(`@${botJid.split('@')[0]}`, 'g'), '').trim();
                     [command, ...args] = noMentionText.split(/\s+/).filter(v => v);
@@ -215,10 +211,8 @@ export async function handler(chatUpdate) {
                     isNewDetection = true;
                 }
 
-                if (!isNewDetection) continue; // Si no hay match ni nueva detección, salta al siguiente plugin.
+                if (!isNewDetection) continue;
             }
-            
-            // --- 4. HOOK BEFORE y Verificación de Aceptación ---
 
             if (typeof plugin.before === 'function') {
                 const extraBefore = {
@@ -230,8 +224,7 @@ export async function handler(chatUpdate) {
             }
 
             const fail = plugin.fail || global.dfail;
-            
-            // La lógica de isAccept ahora verifica el 'command' detectado (ya sea por prefijo o por nueva detección)
+
             const isAccept = plugin.command instanceof RegExp ?
                 plugin.command.test(command) :
                 Array.isArray(plugin.command) ?
@@ -247,8 +240,6 @@ export async function handler(chatUpdate) {
             }
 
             if (!isAccept) continue;
-            
-            // El plugin fue aceptado, ya sea por el prefijo tradicional o por la nueva detección.
 
             m.plugin = name;
 
@@ -277,8 +268,8 @@ export async function handler(chatUpdate) {
             }
 
             m.isCommand = true;
-            m.usedPrefix = usedPrefix; // Asignar el prefijo detectado ('!', '@', '>>')
-            
+            m.usedPrefix = usedPrefix;
+
             const xp = 'exp' in plugin ? parseInt(plugin.exp) : 10;
             m.exp += xp;
 
