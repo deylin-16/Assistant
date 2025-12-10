@@ -35,10 +35,10 @@ export async function handler(chatUpdate, store) {
         }
     }
 
-    // smsg ahora tiene try/catch interno para evitar colapsos
+    // smsg ahora tiene try/catch interno y JID defensivo
     m = smsg(conn, m, store) || m; 
     
-    if (!m) return; // Captura cualquier fallo de smsg y descarta el objeto
+    if (!m) return; 
 
     if (global.db.data == null) {
         await global.loadDatabase();
@@ -66,13 +66,13 @@ export async function handler(chatUpdate, store) {
         m.exp = 0;
         m.coin = false;
 
-        // --- INICIALIZACIÓN DE JIDS REFORZADA ---
+        // --- OBTENCIÓN DE JIDS REFORZADA (USANDO LOS VALORES SEGUROS DE smsg) ---
         const senderJid = m.sender;
         const chatJid = m.chat;
         const botJid = conn.user.jid;
 
-        // Comprobación de JID antes de acceder a la base de datos (SOLUCIÓN AL ERROR DE LÍNEA 39)
-        if (!chatJid || chatJid === '') return; 
+        // DOBLE COMPROBACIÓN: Si m.chat (o chatJid) es vacío o inválido, salimos antes de la DB.
+        if (!chatJid || !chatJid.includes('@')) return; 
         
         global.db.data.chats[chatJid] ||= {
             isBanned: false,
@@ -352,6 +352,8 @@ function smsg(conn, m, store) {
 
         m.id = k;
         m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
+        
+        // ASIGNACIÓN TOTALMENTE SEGURA: usamos '' si no hay valor
         m.chat = conn.normalizeJid(m.key?.remoteJid || ''); 
         m.fromMe = m.key?.fromMe;
         m.sender = conn.normalizeJid(m.key?.fromMe ? conn.user.jid : m.key?.participant || m.key?.remoteJid || '');
