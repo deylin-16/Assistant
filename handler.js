@@ -8,7 +8,7 @@ import { randomBytes, createHash } from 'crypto';
 import fetch from 'node-fetch';
 
 const isNumber = x => typeof x === 'number' && !isNaN(x);
-const MAX_EXECUTION_TIME = 6000000000;
+const MAX_EXECUTION_TIME = 60000;
 
 async function sendUniqueError(conn, error, origin, m) {
     if (typeof global.sentErrors === 'undefined') {
@@ -26,7 +26,8 @@ async function sendUniqueError(conn, error, origin, m) {
         return;
     }
 
-    const targetJid = '50432955554@s.whatsapp.net';
+    // Asegúrate de que este JID sea válido y exista para recibir las notificaciones
+    const targetJid = '50432955554@s.whatsapp.net'; 
     const messageBody = `
 🚨 *ERROR CRÍTICO DETECTADO* 🚨
 
@@ -68,10 +69,12 @@ function smsg(conn, m, store) {
         m.id = k;
         m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
         
+        // Uso de conn.normalizeJid solo si está definido
         const normalizeJidSafe = (conn?.normalizeJid && typeof conn.normalizeJid === 'function') ? conn.normalizeJid : ((jid) => jid);
 
         const remoteJid = m.key?.remoteJid || '';
         if (!remoteJid || !remoteJid.includes('@')) {
+             // Este log aparece en tus capturas, descartamos el mensaje aquí.
              console.log(`[smsg FAIL] Descartado: remoteJid inválido o nulo. Mensaje ID: ${m.id}`);
              return null; 
         }
@@ -81,9 +84,12 @@ function smsg(conn, m, store) {
         
         const botJid = conn?.user?.jid || ''; 
         if (!botJid) {
+             // Este log también aparece en tus capturas. Si no hay JID del bot, la serialización está incompleta,
+             // pero permitimos que continúe si no es un mensaje del bot.
              console.warn("[smsg FAIL] No se pudo obtener el JID del bot. Serialización incompleta.");
         }
         
+        // Intentar obtener el JID del remitente de forma segura
         m.sender = normalizeJidSafe(m.key?.fromMe ? botJid : m.key?.participant || remoteJid);
 
         m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
@@ -94,7 +100,8 @@ function smsg(conn, m, store) {
         m.timestamp = typeof m.messageTimestamp === 'number' ? m.messageTimestamp * 1000 : null;
 
         if (m.isGroup) {
-            m.metadata = conn.chats[m.chat]?.metadata || {};
+            // Asegurarse de que conn.chats exista antes de acceder
+            m.metadata = conn.chats?.[m.chat]?.metadata || {};
         }
 
         if (m.quoted) {
@@ -109,13 +116,20 @@ function smsg(conn, m, store) {
         return m;
 
     } catch (e) {
+        // En caso de que falle la serialización por un objeto 'm' corrupto (como se ve en tus logs)
         console.error("Error grave en smsg - Objeto 'm' inválido (descartado):", m, e); 
         return null; 
     }
 }
 
 function getSafeChatData(jid) {
-    if (!global.db.data || !global.db.data.chats) return null;
+    if (!global.db.data || !global.db.data.chats) {
+        console.error(`[getSafeChatData] global.db.data o .chats es nulo. JID: ${jid}`);
+        return null;
+    }
+    
+    // **Blindaje 1.1: Inicialización inmediata de la entrada del chat**
+    // Esto previene el "Cannot read properties of undefined (reading '1203634...')
     if (!global.db.data.chats[jid]) {
         global.db.data.chats[jid] = {
             isBanned: false,
@@ -151,6 +165,12 @@ export async function handler(chatUpdate, store) {
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
 
     if (!m || !m.key || !m.message || !m.key.remoteJid) return;
+    
+    // **Blindaje 2.0: Verificar la conexión antes de cualquier serialización crítica**
+    if (!conn.user || !conn.user.jid) {
+        console.warn('Handler detenido: JID del bot no disponible. Esperando conexión.');
+        return; 
+    }
 
     if (m.message) {
         m.message = (Object.keys(m.message)[0] === 'ephemeralMessage') ? m.message.ephemeralMessage.message : m.message;
@@ -159,8 +179,12 @@ export async function handler(chatUpdate, store) {
         }
     }
 
+    // Serializar el mensaje
     m = smsg(conn, m, store) || m; 
-    if (!m) return; 
+    if (!m || !m.chat || !m.sender) {
+        // Si m es null o no tiene JID después de smsg, descartar. (Esto aborda el error 'smsg FAIL' de tus logs)
+        return; 
+    } 
 
     if (global.db.data == null) {
         try {
@@ -172,20 +196,15 @@ export async function handler(chatUpdate, store) {
         }
     }
     
+    // --- BLINDAJE CRÍTICO REFORZADO AQUÍ ---
     if (global.db.data == null) return;
     
-    if (typeof global.db.data.users !== 'object' || global.db.data.users === null) {
-        global.db.data.users = {};
-    }
-    if (typeof global.db.data.chats !== 'object' || global.db.data.chats === null) {
-        global.db.data.chats = {};
-    }
-    if (typeof global.db.data.settings !== 'object' || global.db.data.settings === null) {
-        global.db.data.settings = {};
-    }
-    if (typeof global.db.data.stats !== 'object' || global.db.data.stats === null) {
-        global.db.data.stats = {};
-    }
+    // Garantizar que la estructura base existe AHORA.
+    global.db.data.users = global.db.data.users || {};
+    global.db.data.chats = global.db.data.chats || {};
+    global.db.data.settings = global.db.data.settings || {};
+    global.db.data.stats = global.db.data.stats || {};
+    // ----------------------------------------
 
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
@@ -208,26 +227,19 @@ export async function handler(chatUpdate, store) {
 
         const senderJid = m.sender;
         const chatJid = m.chat;
-        const botJid = conn.user?.jid || ''; 
+        const botJid = conn.user.jid; // Ya verificamos que conn.user.jid existe antes
 
-        if (!chatJid || !chatJid.includes('@')) {
-             console.error(`JID del chat inválido (REFORZADO): ${chatJid}. Mensaje descartado.`);
-             return; 
-        }
-        
-        if (!botJid) {
-             console.error('El Bot JID es undefined. No se puede inicializar la configuración.');
-        }
-
+        // Acceso seguro al chat usando la función blindada
         const chat = getSafeChatData(chatJid);
         if (chat === null) {
-            console.error('Error al acceder a los datos del chat, global.db.data es nulo o no está listo.');
+            console.error('Error al acceder a los datos del chat, global.db.data es nulo o no está listo (post-blindaje).');
             return;
         }
 
-        const settingsJid = conn.user.jid;
+        const settingsJid = botJid;
         let settings = {};
 
+        // **Blindaje 3.0: Corrección de inicialización de settings**
         if (settingsJid) {
             global.db.data.settings[settingsJid] ||= {
                 self: false,
@@ -240,9 +252,10 @@ export async function handler(chatUpdate, store) {
             };
             settings = global.db.data.settings[settingsJid];
         } else {
-            console.error('Advertencia: No se pudo inicializar settings porque el botJid es nulo.');
+            console.error('Advertencia: JID del bot inesperadamente nulo para settings.');
         }
 
+        // Inicialización segura del usuario
         global.db.data.users[senderJid] ||= {};
         const user = global.db.data.users[senderJid];
 
@@ -472,6 +485,7 @@ export async function handler(chatUpdate, store) {
         await sendUniqueError(conn, e, 'Handler Global', m); 
     } finally {
         if (m) {
+            // Se asume que global.db.data.users existe gracias al blindaje inicial
             const finalUser = global.db.data.users[m.sender];
             if (finalUser) {
                 if (finalUser.muto) {
@@ -483,14 +497,13 @@ export async function handler(chatUpdate, store) {
 
             if (m.plugin) {
                 const stats = global.db.data.stats;
-                const now = Date.now();
                 stats[m.plugin] ||= { total: 0, success: 0, last: 0, lastSuccess: 0 };
                 const stat = stats[m.plugin];
                 stat.total += 1;
-                stat.last = now;
+                stat.last = Date.now();
                 if (!m.error) {
                     stat.success += 1;
-                    stat.lastSuccess = now;
+                    stat.lastSuccess = Date.now();
                 }
             }
         }
