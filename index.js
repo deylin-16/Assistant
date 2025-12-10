@@ -150,6 +150,7 @@ global.loadDatabase = async function loadDatabase() {
     return global.db.data;
 };
 
+// **CRÍTICO:** Aseguramos que la DB esté cargada ANTES de la conexión
 await loadDatabase();
 
 const { state, saveState, saveCreds } = await useMultiFileAuthState(global.sessions);
@@ -313,16 +314,18 @@ global.reloadHandler = async function(restatConn) {
     }
 
     if (!isInit) {
+        // Desactiva los listeners ANTES de reasignarlos.
         global.conn.ev.off('messages.upsert', global.conn.handler);
         global.conn.ev.off('connection.update', global.conn.connectionUpdate);
         global.conn.ev.off('creds.update', global.conn.credsUpdate);
+        isHandlerActive = false; // Resetear la bandera
     }
 
     global.conn.handler = handler.handler.bind(global.conn);
     global.conn.connectionUpdate = connectionUpdate.bind(global.conn);
     global.conn.credsUpdate = saveCreds.bind(global.conn, true);
 
-    // *Aquí NO asignamos el 'messages.upsert'*, lo hace 'connectionUpdate' si está 'open' y el JID existe.
+    // CRÍTICO: El evento 'messages.upsert' se asigna DENTRO de 'connectionUpdate' si la conexión está 'open'.
     global.conn.ev.on('connection.update', global.conn.connectionUpdate);
     global.conn.ev.on('creds.update', global.conn.credsUpdate);
     isInit = false;
@@ -388,7 +391,7 @@ global.reload = async (_ev, filename) => {
 filesInit().then(() => {
     Object.freeze(global.reload);
     watch(pluginFolder, global.reload);
-    global.reloadHandler(); // Esto iniciará la conexión
+    global.reloadHandler();
 }).catch(console.error);
 
 
@@ -401,7 +404,7 @@ if (!global.opts['test'] && global.db) {
 
 async function _quickTest() {
     const test = await Promise.all([
-        spawn('ffmpeg'), spawn('ffprobe'), spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-filter_complex', 'color', '-frames:v', '1', '-f', 'webp', '-']),
+        spawn('ffmpeg'), spawn('ffprobe'), spawn('ffmpeg', ['-hide_banner', '...']),
         spawn('convert'), spawn('magick'), spawn('gm'), spawn('find', ['--version']),
     ].map((p) => {
         return Promise.race([
@@ -410,7 +413,7 @@ async function _quickTest() {
         ]);
     }));
     const [ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find] = test;
-    const s = global.support = { ffmpeg, ffprobe, ffmpegWebp, convert, magick, gm, find };
+    const s = global.support = { ffmpeg, ffprobe, ffmpegWebp: ffmpeg, convert, magick, gm, find };
     Object.freeze(global.support);
     global.conn.logger.info(chalk.bold(`✦ H E C H O\n`.trim()));
 }
