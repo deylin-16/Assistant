@@ -171,8 +171,10 @@ const handler = async (m, { conn, text, command }) => {
       }
     };
 
+    let jid = m.sender
+
     const fkontak = {
-      key: { fromMe: false, participant: "0@s.whatsapp.net" },
+      key: { fromMe: false, participant: jid },
       message: {
         documentMessage: {
           title: `「 ${title} 」`,
