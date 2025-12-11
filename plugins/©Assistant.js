@@ -12,34 +12,13 @@ handler.all = async function (m, { conn }) {
 
   if (!conn.user) return
   
-  m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 
-          || m.id.startsWith('3EB0') && (m.id.length === 12 || m.id.length === 20 || m.id.length === 22) 
-          || m.id.startsWith('B24E') && m.id.length === 20
-  if (m.isBot) return 
-  
+  // OMITIENDO FILTRO m.isBot (ASUMIENDO QUE NO ES UN BOT)
+
   let prefixRegex = new RegExp('^[' + (opts?.prefix || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
-  if (prefixRegex.test(m.text)) return true
-
-  const botJid = conn.user.jid;
-  const botNumber = botJid.split('@')[0];
+  if (prefixRegex.test(m.text)) return true // Si es un comando como /up o !menu, se detiene.
   
-  // LÓGICA DE DETECCIÓN DE MENCIÓN FINAL Y ROBUSTA
-  let isMention = false;
-  if (m.text) {
-      // Detección 1: Por el número corto del bot (el formato que aparece en el texto)
-      if (m.text.includes(`@${botNumber}`)) {
-          isMention = true;
-      }
-      // Detección 2: Usando el array de JIDs mencionadas
-      if (m.mentionedJid && m.mentionedJid.includes(botJid)) {
-          isMention = true;
-      }
-  }
-
-  if (!isMention) return 
-  
-  let query = m.text.replace(new RegExp(`@${botNumber}`, 'g'), '').trim() || ''
-  query = query.replace(/@\w+\s?/, '').trim() || ''
+  // OBTENER TEXTO COMPLETO (CON MENCION)
+  let query = m.text || ''
   let username = m.pushName || 'Usuario'
 
   if (query.length === 0) return 
@@ -47,17 +26,11 @@ handler.all = async function (m, { conn }) {
   await conn.sendPresenceUpdate('composing', m.chat)
 
   // -----------------------------------------------------------
-  // PRUEBA DE RESPUESTA PREDEFINIDA (Manteniéndola por seguridad)
+  // RESPUESTA DE PRUEBA SIMPLE A CUALQUIER TEXTO NO COMANDO
   // -----------------------------------------------------------
-  if (query.toLowerCase().includes('hola')) {
-      await conn.reply(m.chat, `¡Hmph, ${username}! (BOT: ${botNumber}). Detección OK. Es hora de usar la API.`, m)
-      return true
-  } else {
-      await conn.reply(m.chat, `¡Mención detectada! (BOT: ${botNumber}). Escribiste: "${query}".`, m)
-      return true
-  }
+  await conn.reply(m.chat, `✅ PRUEBA EXITOSA. El texto COMPLETO recibido es: "${query}". Ahora, si la mención (@XYZ) NO aparece aquí, ¡ese es el problema!`, m)
+  return true
   // -----------------------------------------------------------
-  
 }
 
 export default handler
