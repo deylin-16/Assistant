@@ -9,9 +9,12 @@ import fetch from 'node-fetch';
 import PhoneNumber from 'awesome-phonenumber';
 import urlRegex from 'url-regex-safe';
 
+// --- FUNCIONES DE SOPORTE ---
+
 const isNumber = x => typeof x === 'number' && !isNaN(x);
 const MAX_EXECUTION_TIME = 60000;
 
+// Función de notificación de error al owner
 async function sendUniqueError(conn, error, origin, m) {
     if (typeof global.sentErrors === 'undefined') {
         global.sentErrors = new Set();
@@ -48,13 +51,7 @@ ${errorText.substring(0, 1500)}
     }
 }
 
-async function getLidFromJid(id, connection) {
-    if (!connection || typeof connection.onWhatsApp !== 'function') return id; 
-    if (id.endsWith('@lid')) return id;
-    const res = await connection.onWhatsApp(id).catch(() => []);
-    return res[0]?.lid || id;
-}
-
+// Función de serialización de mensajes (smsg)
 function smsg(conn, m) {
     if (!m) return m;
 
@@ -113,6 +110,7 @@ function smsg(conn, m) {
     }
 }
 
+// Inicialización segura de datos de chat
 function getSafeChatData(jid) {
     if (!global.db || !global.db.data || !global.db.data.chats) {
         return null; 
@@ -141,6 +139,9 @@ function getSafeChatData(jid) {
     return global.db.data.chats[jid];
 }
 
+
+// --- FUNCIÓN HANDLER PRINCIPAL ---
+
 export async function handler(chatUpdate) {
     const startTime = Date.now();
     this.uptime = this.uptime || Date.now();
@@ -156,6 +157,7 @@ export async function handler(chatUpdate) {
 
     const botJid = conn.user?.jid; 
     if (!botJid) {
+        // Esto es una señal de que la conexión no está lista o falló
         return; 
     }
 
@@ -166,11 +168,14 @@ export async function handler(chatUpdate) {
         }
     }
 
+    // Serializa el mensaje
     m = smsg(conn, m) || m; 
     if (!m || !m.chat || !m.sender) {
+        // Falla en serialización o datos críticos
         return; 
     } 
 
+    // Carga segura de la base de datos
     if (global.db.data == null) {
         try {
             await global.loadDatabase();
@@ -182,11 +187,13 @@ export async function handler(chatUpdate) {
 
     if (global.db.data == null) return;
 
+    // Inicialización de la base de datos (copiado de tu código anterior)
     global.db.data.users = global.db.data.users || {};
     global.db.data.chats = global.db.data.chats || {};
     global.db.data.settings = global.db.data.settings || {};
     global.db.data.stats = global.db.data.stats || {};
 
+    // Control de mensajes duplicados (simplificado)
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
     const lifeTime = 9000;
@@ -248,15 +255,17 @@ export async function handler(chatUpdate) {
         if (opts['swonly'] && m.chat !== 'status@broadcast') return;
         if (typeof m.text !== 'string') m.text = '';
 
-        // INICIO: LÓGICA DE IMPRESIÓN DE MENSAJES EN CONSOLA
+        // INICIO: LÓGICA DE IMPRESIÓN DE MENSAJES EN CONSOLA (DEBE FUNCIONAR AHORA)
         try {
+            // Intenta obtener metadatos del grupo de forma segura
             const groupMetadata = m.isGroup ? (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {} : {};
-            const senderName = m.isGroup ? m.sender.split('@')[0] : await conn.getName(m.sender);
-            const chatName = m.isGroup ? groupMetadata.subject : await conn.getName(m.chat);
+            
+            // Intenta obtener nombres
+            const senderName = m.isGroup ? m.sender.split('@')[0] : await conn.getName(m.sender).catch(() => 'Usuario');
+            const chatName = m.isGroup ? groupMetadata.subject : await conn.getName(m.chat).catch(() => 'Privado');
 
             const now = new Date();
             const formattedTime = now.toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const formattedDate = now.toLocaleString('es-ES', { day: '2-digit', month: 'short' });
 
             const isGroup = m.isGroup;
             const chatLabel = isGroup ? `[G]` : `[P]`;
@@ -265,11 +274,17 @@ export async function handler(chatUpdate) {
             let logText = m.text.replace(/\u200e+/g, '');
             logText = logText.replace(urlRegex({ strict: false }), (url) => chalk.blueBright(url));
 
+            // Detección de comandos preliminar para el log
+            let isCommand = false;
+            if (m.text && global.prefix instanceof RegExp) {
+                isCommand = global.prefix.test(m.text.trim()[0]);
+            }
+            
             const logLine = chalk.bold.hex('#00FFFF')(`[${formattedTime}] `) +
                             chalk.hex('#7FFF00').bold(chatLabel) + ' ' +
                             chalk.hex('#FF4500')(`${chatName ? chatName.substring(0, 15) : 'N/A'}: `) +
                             chalk.hex('#FFFF00')(`${senderName || senderNumber}: `) +
-                            (m.isCommand ? chalk.yellow(logText) : logText.substring(0, 60));
+                            (isCommand ? chalk.yellow(logText) : logText.substring(0, 60));
 
             console.log(logLine);
 
@@ -278,12 +293,12 @@ export async function handler(chatUpdate) {
             }
 
         } catch (printError) {
-            console.error(chalk.red('Error al imprimir mensaje en consola:', printError));
+            console.error(chalk.red('Error al imprimir mensaje en consola:'), printError);
         }
         // FIN: LÓGICA DE IMPRESIÓN DE MENSAJES EN CONSOLA
 
 
-        let senderLid, botLid, groupMetadata, participants, user2, bot, isRAdmin, isAdmin, isBotAdmin;
+        let groupMetadata, participants, user2, bot, isRAdmin, isAdmin, isBotAdmin;
 
         if (m.isGroup) {
             groupMetadata = (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {};
@@ -296,20 +311,15 @@ export async function handler(chatUpdate) {
                 admin: p.admin 
             })); 
 
-            [senderLid, botLid] = await Promise.all([
-                getLidFromJid(m.sender, conn),
-                getLidFromJid(botJid, conn)
-            ]);
-
-            user2 = participants.find(p => p.id === senderLid || p.jid === senderJid) || {};
-            bot = participants.find(p => p.id === botLid || p.id === botJid) || {};
+            // Se omite getLidFromJid para simplificar la depuración por ahora.
+            
+            user2 = participants.find(p => p.jid === senderJid) || {};
+            bot = participants.find(p => p.jid === botJid) || {};
 
             isRAdmin = user2?.admin === "superadmin";
             isAdmin = isRAdmin || user2?.admin === "admin";
             isBotAdmin = !!bot?.admin;
         } else {
-            senderLid = m.sender;
-            botLid = botJid;
             groupMetadata = {};
             participants = [];
             user2 = {};
@@ -380,6 +390,7 @@ export async function handler(chatUpdate) {
                 }
             } else {
 
+                // Lógica de detección sin prefijo (mención o quote)
                 let isNewDetection = false;
 
                 const isMentioned = m.mentionedJid.includes(botJid) || m.text.startsWith('@' + botJid.split('@')[0]);
@@ -536,10 +547,5 @@ let file = global.__filename(import.meta.url, true);
 watchFile(file, async () => {
     unwatchFile(file);
     console.log(chalk.magenta("Se actualizo 'handler.js'"));
-    if (global.conns && global.conns.length > 0) {
-        const users = global.conns.filter((conn) => conn.user && conn.ws.socket && conn.ws.socket.readyState !== ws.CLOSED);
-        for (const user of users) {
-            user.subreloadHandler(false);
-        }
-    }
+    if (global.reloadHandler) console.log(await global.reloadHandler());
 });
