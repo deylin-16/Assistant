@@ -27,7 +27,7 @@ handler.all = async function (m, { conn }) {
 
     let isOrBot = /bot/i.test(query)
     let isReply = m.quoted && m.quoted.sender === this.user.jid
-        let isMention = m.mentionedJid && m.mentionedJid.includes(this.user.jid) 
+        let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
     if (!(isOrBot || isReply || isMention)) return
 
