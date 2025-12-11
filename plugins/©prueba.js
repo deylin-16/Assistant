@@ -189,7 +189,7 @@ const handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, i
         break;
   }
 
-  conn.reply(m.chat, `${emoji} La función *${type}* se *${isEnable ? 'activó' : 'desactivó'}* ${isAll ? 'para este Bot' : isUser ? '' : 'para este chat'}`, m, rcanal);
+  conn.reply(m.chat, `La función *${type}* se *${isEnable ? 'activó' : 'desactivó'}* ${isAll ? 'para este Bot' : isUser ? '' : 'para este chat'}`, m);
 };
 
 handler.help = [
