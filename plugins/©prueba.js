@@ -5,5 +5,4 @@ let h = conn.user.jid
 returt m.reply(h)
 
 handler.command = ['h']
-
-export handler
+export default handler;
