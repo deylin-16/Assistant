@@ -32,7 +32,7 @@ import readline, { createInterface } from 'readline'
 import NodeCache from 'node-cache'
 const {CONNECTING} = ws
 const {chain} = lodash
-const sessions = 'sessions' 
+global.sessions = 'sessions' 
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000
 
 console.log(chalk.bold.hex('#FF00FF')(`\n👾 INICIANDO WHATSAPP-BOT ⚡\n`))
