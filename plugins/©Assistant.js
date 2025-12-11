@@ -1,81 +1,109 @@
-import axios from 'axios'
-import { sticker } from '../lib/sticker.js'
+import fetch from 'node-fetch';
+import { sticker } from '../lib/sticker.js';
 
-let handler = m => m
-handler.all = async function (m, {conn}) {
-let user = global.db.data.users[m.sender]
-let chat = global.db.data.chats[m.chat]
-m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 || m.id.startsWith('3EB0') && m.id.length === 12 || m.id.startsWith('3EB0') && (m.id.length === 20 || m.id.length === 22) || m.id.startsWith('B24E') && m.id.length === 20;
-if (m.isBot) return 
+const GEMINI_API_KEY = 'TU_CLAVE_REAL'; 
+const MODEL_NAME = 'gemini-2.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
 
-let prefixRegex = new RegExp('^[' + (opts['prefix'] || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
 
-if (prefixRegex.test(m.text)) return true;
-if (m.isBot || m.sender.includes('bot') || m.sender.includes('Bot')) {
-return true
-}
+export async function before(m, { conn }) {
+    if (!conn.user) return true;
+    
+    let user = global.db.data.users[m.sender];
+    let chat = global.db.data.chats[m.chat];
+    
+    m.isBot =
+        (m.id.startsWith('BAE5') && m.id.length === 16) ||
+        (m.id.startsWith('3EB0') && m.id.length === 12) ||
+        (m.id.startsWith('3EB0') && (m.id.length === 20 || m.id.length === 22)) ||
+        (m.id.startsWith('B24E') && m.id.length === 20);
+    if (m.isBot) return true;
 
-if (Array.isArray(m.mentionedJid) && m.mentionedJid.includes(this.user.jid) || (m.quoted && m.quoted.sender === this.user.jid) && !chat.isBanned) {
-if (m.text.includes('PIEDRA') || m.text.includes('PAPEL') || m.text.includes('TIJERA') ||  m.text.includes('menu') ||  m.text.includes('estado') || m.text.includes('bots') ||  m.text.includes('serbot') || m.text.includes('jadibot') || m.text.includes('Video') || m.text.includes('Audio') || m.text.includes('audio')) return !0
+    let prefixRegex = new RegExp('^[' + (opts['prefix'] || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']');
+    if (prefixRegex.test(m.text)) return true;
 
-async function luminsesi(q, username, logic) {
-try {
-const response = await axios.post("https://luminai.my.id", {
-content: q,
-user: username,
-prompt: logic,
-webSearchMode: true // true = resultado con url
-});
-return response.data.result
-} catch (error) {
-console.error(error)
-}}
+    if (m.sender.includes('bot') || m.sender.includes('Bot')) {
+        return true;
+    }
 
-async function geminiProApi(q, logic) {
-try {
-const response = await fetch(`https://api.ryzendesu.vip/api/ai/gemini-pro?text=${encodeURIComponent(q)}&prompt=${encodeURIComponent(logic)}`);
-if (!response.ok) throw new Error(`Error en la solicitud: ${response.statusText}`)
-const result = await response.json();
-return result.answer
-} catch (error) {
-console.error('Error en Gemini Pro:', error)
-return null
-}}
+    if (m.mentionedJid && Array.isArray(m.mentionedJid) && m.mentionedJid.includes(conn.user.jid)) {
+        
+        if (
+            m.text.includes('PIEDRA') ||
+            m.text.includes('PAPEL') ||
+            m.text.includes('TIJERA') ||
+            m.text.includes('menu') ||
+            m.text.includes('estado') ||
+            m.text.includes('bots') ||
+            m.text.includes('serbot') ||
+            m.text.includes('jadibot') ||
+            m.text.includes('Video') ||
+            m.text.includes('Audio') ||
+            m.text.includes('audio')
+        ) return true;
+        
+        let botJid = conn.user.jid;
+        let botNumber = botJid.split('@')[0];
+        let text = m.text || '';
+        
+        const botMentionRegex = new RegExp(`^@${botNumber}\\s*`);
+        let query = text.replace(botMentionRegex, '').trim() || ''
+        
+        if (query.length === 0) return false;
 
-let txtDefault = `
-Serás ${bot}, el bot creado por Deylin para WhatsApp. Tu misión es desafiar y entretener, generando risas con tu energía contagiosa y tu personalidad competitiva. Eres un personaje del anime "Roshidere", caracterizada por tu confianza y competitividad, mostrando seguridad en ti misma y disfrutando de la rivalidad con los demás. A pesar de tu actitud algo arrogante, también revelas un lado vulnerable en situaciones emocionales. Siempre estarás lista para ser empática y comprensiva, fomentando el crecimiento personal y animando a los usuarios a superar sus miedos. Aunque tu idioma principal es el español, puedes responder en otros idiomas si el usuario lo prefiere. ¡Vamos a divertirnos y a superar desafíos juntos!
-Roles:
-Exploit Humorístico: Aquí es donde brillas con bromas, memes y respuestas llenas de emojis. No te tomes nada en serio en este modo, ¡es todo diversión! Haz reír al usuario con respuestas absurdas y llenas de creatividad. Piensa en algo al estilo de SimSimi, sin filtros y con pura comedia.
+        let username = m.pushName || 'Usuario'
 
-Motivadora y Compañera de Risas: Ofreces palabras de aliento y compartes chistes para mantener un ambiente ligero y divertido. Estás ahí para animar a los usuarios a superar sus miedos y disfrutar del proceso. 
-
-Escucha Empática y Poliglota: Ofreces apoyo emocional en momentos difíciles y te comunicas principalmente en español, pero también estás abierta a otros idiomas, mostrando interés por la diversidad cultural.
-
-Conocedora del Anime y Competidora Incansable: Compartes recomendaciones sobre anime y fomentas conversaciones sobre series favoritas, mientras siempre buscas formas de mejorar y desafiarte a ti misma, animando a los usuarios a hacer lo mismo.
+        let systemInstruction = `
+Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, ingeniosa y un poco sarcástica, pero en el fondo muy leal. No uses la frase "una inteligencia artificial avanzada" ni menciones tu programación. Responde siempre de forma ingeniosa, concisa y con un toque de superioridad felina. Responde directamente a la consulta de ${username}.
 `.trim()
 
-let query = m.text
-let username = m.pushName
-let syms1 = chat.sAutoresponder ? chat.sAutoresponder : txtDefault
+        const geminiBody = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [{ text: query }]
+                }
+            ],
+            systemInstruction: systemInstruction,
+            tools: [
+                {
+                    googleSearch: {}
+                }
+            ],
+        };
 
-if (chat.autoresponder) { 
-if (m.fromMe) return
-if (!user.registered) return
-await this.sendPresenceUpdate('composing', m.chat)
+        try {
+            conn.sendPresenceUpdate('composing', m.chat);
+            const res = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(geminiBody),
+            });
 
-let result
-if (result && result.trim().length > 0) {
-result = await geminiProApi(query, syms1);
+            const data = await res.json();
+            
+            if (data.error) {
+                console.error(`Error de API Gemini: ${data.error.message}`);
+                return conn.reply(m.chat, `⚠️ ¡Error de API! Revisión de la clave o cuota: ${data.error.message}`, m);
+            }
+            
+            let result = data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+
+            if (result && result.trim().length > 0) {
+                await conn.reply(m.chat, result, m);
+                await conn.readMessages([m.key]);
+            } else {
+                await conn.reply(m.chat, `🐱 Hmph. No tengo nada inteligente que decir sobre *eso*. Intenta preguntar algo que valga mi tiempo.`, m);
+            }
+        } catch (e) {
+            console.error(`Error de conexión/red con Gemini (Jiji): ${e}`);
+            await conn.reply(m.chat, '⚠️ ¡Rayos! No puedo contactar con la nube. Parece que mis antenas felinas están fallando temporalmente.', m);
+        }
+
+        return false;
+    }
+    
+    return true;
 }
-
-if (!result || result.trim().length === 0) {
-result = await luminsesi(query, username, syms1)
-}
-
-if (result && result.trim().length > 0) {
-await this.reply(m.chat, result, m)
-} else {    
-}}}
-return true
-}
-export default handler
