@@ -21,14 +21,27 @@ handler.all = async function (m, { conn }) {
   if (prefixRegex.test(m.text)) return true
 
   const botJid = conn.user.jid;
-  const botNumber = botJid.split('@')[0];
   
-  let isMentionByText = m.text && new RegExp(`@${botNumber}`, 'g').test(m.text);
-  let isMentionByJid = m.mentionedJid && m.mentionedJid.includes(botJid);
+  // VERIFICACIÓN DE MENCIÓN SIMPLIFICADA Y ROBUSTA
+  let isMention = false;
+  if (m.text) {
+      // 1. Detección por el número corto del bot
+      const botNumberShort = botJid.split('@')[0].trim();
+      if (m.text.includes(`@${botNumberShort}`)) {
+          isMention = true;
+      }
+      
+      // 2. Detección por JID completa si el framework la proporciona
+      if (m.mentionedJid && m.mentionedJid.includes(botJid)) {
+          isMention = true;
+      }
+  }
 
-  if (!isMentionByText && !isMentionByJid) return 
+  if (!isMention) return 
 
-  let query = m.text.replace(new RegExp(`@${botNumber}`, 'g'), '').trim() || ''
+  // Si llegamos aquí, la mención fue detectada.
+  
+  let query = m.text.replace(new RegExp(`@${botJid.split('@')[0]}`, 'g'), '').trim() || ''
   query = query.replace(/@\w+\s?/, '').trim() || ''
   let username = m.pushName || 'Usuario'
 
@@ -40,10 +53,10 @@ handler.all = async function (m, { conn }) {
   // PRUEBA DE RESPUESTA PREDEFINIDA SIN API DE GEMINI
   // -----------------------------------------------------------
   if (query.toLowerCase().includes('hola')) {
-      await conn.reply(m.chat, `¡Hmph, ${username}! Te he oído. Prueba de mención exitosa.`, m)
+      await conn.reply(m.chat, `¡Hmph, ${username}! Te he oído. Prueba de mención EXITOSA y 'Hola' detectado.`, m)
       return true
   } else {
-      await conn.reply(m.chat, `¡Gato detectado! Escribiste: "${query}". Prueba de mención OK, pero necesito que digas 'Hola' para confirmar la respuesta predefinida.`, m)
+      await conn.reply(m.chat, `¡Gato detectado! Mención OK. Escribiste: "${query}".`, m)
       return true
   }
   // -----------------------------------------------------------
