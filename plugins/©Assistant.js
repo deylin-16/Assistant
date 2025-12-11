@@ -12,21 +12,7 @@ handler.all = async function (m, { conn }) {
   let user = global.db.data.users[m.sender]
   let chat = global.db.data.chats[m.chat]
 
-  const res = await fetch(`${kirito}/media/images/87411733_k.jpg`);
-  const thumb2 = Buffer.from(await res.arrayBuffer());
-  const userJid = m.sender;
-
-  const fkontak = {
-    key: { fromMe: false, participant: userJid },
-    message: {
-      imageMessage: {
-        mimetype: 'image/jpeg',
-        caption: '𝗥𝗘𝗦𝗣𝗨𝗘𝗦𝗧𝗔 > 𝗕𝗢𝗧',
-        jpegThumbnail: thumb2
-      }
-    }
-  };
-
+ 
   m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 
           || m.id.startsWith('3EB0') && (m.id.length === 12 || m.id.length === 20 || m.id.length === 22) 
           || m.id.startsWith('B24E') && m.id.length === 20
@@ -38,12 +24,12 @@ handler.all = async function (m, { conn }) {
   const botJid = conn.user.jid;
   const botNumber = botJid.split('@')[0];
   
-  // VERIFICACIÓN MEJORADA: Busca el número de bot dentro del texto del mensaje
+  
   let isMention = m.text && m.text.includes('@' + botNumber);
 
   if (!isMention) return 
 
-  // Limpiar la mención del texto antes de enviar la consulta
+  
   let query = m.text.replace(new RegExp(`@${botNumber}`, 'g'), '').trim() || ''
   let username = m.pushName || 'Usuario'
 
@@ -82,7 +68,7 @@ Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, inge
     let result = data.candidates?.[0]?.content?.parts?.[0]?.text || data.error?.message || null;
 
     if (result && result.trim().length > 0) {
-      await conn.reply(m.chat, result, fkontak)
+      await conn.reply(m.chat, result, m)
     } else {
       await conn.reply(m.chat, '🐱 Hmph. ¿Acaso me despertaste para preguntar *eso*? Sé más específico.', m)
     }
