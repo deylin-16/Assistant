@@ -49,10 +49,8 @@ await m.react('✔️')
     console.error('Error al robar ViewOnce:', e)
 }}
 
-handler.help = ['ver']
-handler.tags = ['tools']
-handler.customPrefix = '👍' 
-handler.command = ['👍']
+
+handler.command = ['🥺']
 handler.rowner = true;
 
 export default handler
