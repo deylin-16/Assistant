@@ -9,7 +9,7 @@ const handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, i
   let isAll = false, isUser = false;
   let isEnable = false;
 
-
+switch (type) {
     case 'autor':
     case 'res':
       if (!m.isGroup) {
@@ -25,7 +25,7 @@ const handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, i
       break;
 
 
-  switch (type) {
+  
     case 'welcome':
     case 'bv':
     case 'bienvenida':
