@@ -15,24 +15,35 @@ export async function before(m, { conn }) {
     let botNumber = botJid.split('@')[0];
     let text = m.text || '';
 
-    // CONDICIÓN ESTRICTA: Solo activar si el JID del bot está en la lista de menciones.
-    if (!mentionedJidSafe.includes(botJid)) {
+    // CONDICIÓN DE ACTIVACIÓN: Activamos si el mensaje empieza con '@' (detección agresiva que funciona en tu entorno)
+    let isMentionedAtAll = text.trim().startsWith('@');
+    
+    if (!isMentionedAtAll) {
         return true;
     }
 
-    // --- El bot ha sido mencionado. Procedemos a limpiar la consulta. ---
+    // --- FILTRO ESTRICTO: Si el bot NO está en la lista OFICIAL, y SI HAY otras JIDs, ignoramos. ---
+    
+    // Si la lista de menciones *no* incluye al bot, y esa lista no está vacía (alguien más fue mencionado),
+    // asumimos que no es para nosotros y salimos.
+    if (!mentionedJidSafe.includes(botJid) && mentionedJidSafe.length > 0) {
+        return true;
+    }
+
+    // --- El bot debe responder. Procedemos a limpiar la consulta. ---
 
     let query = text;
 
-    // Eliminamos todas las menciones del texto para obtener solo la pregunta.
+    // Limpiamos la mención del bot y de otros usuarios (solo por JID)
     for (let jid of mentionedJidSafe) {
-        // Utilizamos una expresión regular para limpiar la mención y el posible espacio siguiente.
         query = query.replace(new RegExp(`@${jid.split('@')[0]}(\\s|$)`, 'g'), ' ').trim();
     }
     
-    // Si aún queda un remanente de @, lo limpiamos
-    query = query.trim();
-
+    // Limpiamos cualquier rastro de @ al inicio que pueda haber quedado (maneja la mención al bot por nombre)
+    if (query.startsWith('@')) {
+        query = query.replace(/^@\S+\s?/, '').trim();
+    }
+    
     let username = m.pushName || 'Usuario';
 
     if (query.length === 0) return false;
@@ -56,10 +67,8 @@ export async function before(m, { conn }) {
 
         if (result && result.trim().length > 0) {
             
-            // Corrección de formato: Negritas
             result = result.replace(/\*\*(.*?)\*\*/g, '*$1*').trim(); 
             
-            // Corrección de formato: Párrafos
             result = result.replace(/([.?!])\s*/g, '$1\n\n').trim();
 
             await conn.reply(m.chat, result, m);
