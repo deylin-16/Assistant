@@ -9,6 +9,22 @@ const handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, i
   let isAll = false, isUser = false;
   let isEnable = false;
 
+
+    case 'autor':
+    case 'res':
+      if (!m.isGroup) {
+        if (!isOwner) {
+          global.dfail('group', m, conn);
+          throw false;
+        }
+      } else if (!isAdmin) {
+        global.dfail('admin', m, conn);
+        throw false;
+      }
+      isEnable = chat.autoresponder = !chat.autoresponder;
+      break;
+
+
   switch (type) {
     case 'welcome':
     case 'bv':
@@ -30,6 +46,6 @@ const handler = async (m, { conn, usedPrefix, command, args, isOwner, isAdmin, i
 };
 
 handler.command = [
-  'welcome', 'bv', 'bienvenida'
+  'welcome', 'bv', 'bienvenida', 'autor', 'res'
 ]
 export default handler
