@@ -6,16 +6,43 @@ const POLLINATIONS_BASE_URL = 'https://text.pollinations.ai';
 export async function before(m, { conn }) {
     if (!conn.user) return true;
     
-    // CORRECCIÓN CRÍTICA DE ERROR y aseguramiento del Array
-    if (!Array.isArray(m.mentionedJid)) {
-        m.mentionedJid = m.mentionedJid ? [m.mentionedJid] : [];
-    }
-    
     let user = global.db.data.users[m.sender];
     let chat = global.db.data.chats[m.chat];
     
-    // MANTENEMOS SOLO LA CONDICIÓN DE MENCIÓN
-    if (m.mentionedJid.includes(conn.user.jid)) {
+    // CORRECCIÓN CRÍTICA DE ERRORES: No modificamos m.mentionedJid. Creamos una variable local segura.
+    let mentionedJidSafe = Array.isArray(m.mentionedJid) ? m.mentionedJid : [];
+    
+    m.isBot =
+        (m.id.startsWith('BAE5') && m.id.length === 16) ||
+        (m.id.startsWith('3EB0') && m.id.length === 12) ||
+        (m.id.startsWith('3EB0') && (m.id.length === 20 || m.id.length === 22)) ||
+        (m.id.startsWith('B24E') && m.id.length === 20);
+    if (m.isBot) return true;
+
+    let prefixRegex = new RegExp('^[' + (opts['prefix'] || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']');
+    if (prefixRegex.test(m.text)) return true;
+
+    if (m.sender.includes('bot') || m.sender.includes('Bot')) {
+        return true;
+    }
+
+    // CONDICIÓN DE ACTIVACIÓN: Usamos la variable local mencionada segura
+    if (mentionedJidSafe.includes(conn.user.jid)) {
+        
+        // Filtros mínimos
+        if (
+            m.text.includes('PIEDRA') ||
+            m.text.includes('PAPEL') ||
+            m.text.includes('TIJERA') ||
+            m.text.includes('menu') ||
+            m.text.includes('estado') ||
+            m.text.includes('bots') ||
+            m.text.includes('serbot') ||
+            m.text.includes('jadibot') ||
+            m.text.includes('Video') ||
+            m.text.includes('Audio') ||
+            m.text.includes('audio')
+        ) return true;
         
         let botJid = conn.user.jid;
         let botNumber = botJid.split('@')[0];
@@ -25,7 +52,6 @@ export async function before(m, { conn }) {
         query = query.replace(/@\w+\s?/, '').trim() || ''
         let username = m.pushName || 'Usuario'
 
-        // EVITAMOS PETICIONES VACÍAS
         if (query.length === 0) return false;
 
         let jijiPrompt = `Eres Jiji, un gato negro sarcástico y leal, como el de Kiki: Entregas a Domicilio. Responde a ${username}: ${query}`;
