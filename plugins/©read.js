@@ -5,6 +5,7 @@ let quoted = m.quoted
 if (!quoted) return 
 
 try {
+   await m.react('⌛')
 
 let viewOnceMessage = quoted.viewOnce ? quoted : quoted.mediaMessage?.imageMessage || quoted.mediaMessage?.videoMessage || quoted.mediaMessage?.audioMessage
 let messageType = viewOnceMessage.mimetype || quoted.mtype
@@ -48,6 +49,8 @@ await m.react('✔️')
     console.error('Error al robar ViewOnce:', e)
 }}
 
+handler.help = ['ver']
+handler.tags = ['tools']
 handler.customPrefix = '👍' 
 handler.command = ['👍']
 handler.rowner = true;
