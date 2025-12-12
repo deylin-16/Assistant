@@ -22,9 +22,9 @@ let handler = async (m, { conn, text, command, isAdmin, isGroup }) => {
 
             if (!customMessage) return m.reply(`*Uso:* ${usedPrefix}setwelcome ¡Bienvenido, @user! Eres el miembro @total del grupo @grupo.`)
 
-            // Guardamos el mensaje personalizado
+            
             chat.customWelcome = customMessage
-            // Aseguramos que el welcome esté activado al establecer el mensaje (si no lo estaba)
+            
             chat.welcome = true
 
             m.reply(`✅ Mensaje de bienvenida personalizado establecido para este grupo.\n\n*Nota:* Usa *@user*, *@grupo* y *@total* en tu mensaje.`)
