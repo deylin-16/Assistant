@@ -33,7 +33,7 @@ const RESPONSES = {
     REMOVE_OWNER_GROUP: (user) => [`No se puede eliminar al Propietario del grupo: @${user.split('@')[0]}.`, `El creador del grupo no puede ser expulsado: @${user.split('@')[0]}.`, `Acción imposible: @${user.split('@')[0]} es el dueño del grupo.`].map(s => s.replace(/\@/g, '')) ,
     REMOVE_OWNER_BOT: (user) => [`No puedo eliminar al dueño del software: @${user.split('@')[0]}.`, `Protegido: @${user.split('@')[0]} es el propietario del bot.`, `Imposible expulsar al creador del bot: @${user.split('@')[0]}.`].map(s => s.replace(/\@/g, '')) ,
     REMOVE_SUCCESS: (user) => [`El usuario @${user.split('@')[0]} ha sido expulsado del grupo.`, `Expulsión exitosa: @${user.split('@')[0]} ha sido removido.`, `@${user.split('@')[0]} ya no es miembro del grupo.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_FAIL: (user) => [`Fallo al intentar expulsar a @${user.split('@')[0]}. Verifique los permisos.`, `No se pudo remover a @${user.split('@')[0]}. Es posible que ya no esté.`, `Error de expulsión para @${user.split('@')[0]}.`],
+    REMOVE_FAIL: (user) => [`Fallo al intentar expulsar a @${user.split('@')[0]}. Verifique los permisos.`, 'No se pudo remover a @${user.split('@')[0]}. Es posible que ya no esté.', `Error de expulsión para @${user.split('@')[0]}.`],
     TAGALL_HEADER: (sender) => [`📢 Aviso importante de @${sender}:`, `🗣️ Mensaje global iniciado por @${sender}:`, `🚨 Notificación general de @${sender}:`],
     TAGALL_DEFAULT: ['📢 ¡Atención a todos los miembros!', '🗣️ Se requiere su atención, por favor.', '🚨 Notificación importante del sistema:'],
     USAGE_HINT: (prefix) => [`Instrucciones de uso:
@@ -61,6 +61,15 @@ const randomResponse = (key, ...args) => {
 
 const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command }) => {
 
+    if (m.isGroup && typeof global.getGroupAssistantConfig === 'function') {
+        const config = global.getGroupAssistantConfig(m.chat);
+        const configuredCommand = config.assistantCommand; 
+        
+        if (command !== configuredCommand) {
+            return;
+        }
+    }
+
     if (!m.isGroup) return m.reply(randomResponse('NO_GROUP'), m.chat, { quoted: m })
     if (!isAdmin) return m.reply(randomResponse('NO_ADMIN'), m.chat, { quoted: m })
     if (!isBotAdmin) return m.reply(randomResponse('NO_BOT_ADMIN'), m.chat, { quoted: m })
@@ -68,7 +77,8 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
     const actionText = text.toLowerCase().trim()
 
     if (!actionText) {
-        return m.reply(randomResponse('USAGE_HINT', command), m.chat, { quoted: m })
+        const commandUsed = m.isGroup ? global.getGroupAssistantConfig(m.chat).assistantCommand : command;
+        return m.reply(randomResponse('USAGE_HINT', commandUsed), m.chat, { quoted: m })
     }
 
     let actionKey = null;
@@ -87,7 +97,9 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
     }
 
     const cleanArgument = (fullText, usedPhrase) => {
-        return fullText.replace(command, '').trim()
+        const actualCommand = m.isGroup ? global.getGroupAssistantConfig(m.chat).assistantCommand : command;
+        
+        return fullText.replace(actualCommand, '').trim()
                        .replace(usedPhrase, '').trim()
                        .replace(new RegExp(usedPhrase, 'gi'), '').trim();
     };
@@ -217,6 +229,7 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
     } else if (actionKey === 'TAGALL') {
         let members = participants.map(p => p.id)
 
+        const actualCommand = m.isGroup ? global.getGroupAssistantConfig(m.chat).assistantCommand : command;
         let customText = cleanArgument(actionText, commandPhraseUsed);
 
         let mentionText = customText ? 
@@ -235,7 +248,7 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
     }
 }
 
-handler.command = ['jiji']
+handler.command = ['jiji', 'kiki', 'bot', 'adminbot', 'cmd', 'asistente']
 handler.group = true
 handler.admin = true
 
