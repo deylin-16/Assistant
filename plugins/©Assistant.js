@@ -22,11 +22,8 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
         return true; 
     }
     
-    // CORRECCIÓN CLAVE: Chequear que los participantes existan antes de usar .filter
+    // Chequeo de que los datos del grupo existan antes de usar .filter
     if (!participants || !groupMetadata) {
-        // En un handler.all, a veces groupMetadata no se carga a tiempo.
-        // Podríamos intentar obtenerlo de nuevo si es necesario, pero por ahora,
-        // si no hay datos, asumimos que no es operable y evitamos el error.
         conn.reply(m.chat, '❌ No se pudo cargar la información del grupo. Inténtalo de nuevo.', m);
         return true; 
     }
