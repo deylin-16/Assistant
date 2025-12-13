@@ -221,7 +221,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
   }
 };
 
-handler.customPrefix = /^(🎧|play|mp3|🎵)$/i
-handler.command = new RegExp
+handler.command = /^(🎧|play|mp3|🎵)$/i
+
 
 export default handler;
