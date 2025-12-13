@@ -6,6 +6,16 @@ const POLLINATIONS_BASE_URL = 'https://text.pollinations.ai';
 
 let handler = m => m
 
+const ACTION_SYNONYMS = {
+    CLOSE: ['cierra', 'cerrar', 'bloquea', 'mutea', 'silencia', 'tranca', 'ciérralo', 'silencialo', 'modo-admin', 'cerrar-grupo'],
+    OPEN: ['abre', 'abrir', 'desbloquea', 'desmutea', 'desilencia', 'destranca', 'ábrelo', 'abrir-grupo'],
+    RENAME: ['cambia nombre', 'renombrar', 'ponle nombre', 'actualiza nombre', 'modifica nombre', 'nuevo nombre'],
+    DESC: ['cambia descripción', 'pon descripción', 'nueva descripción', 'actualiza descripción', 'modifica descripción', 'descr'],
+    PHOTO: ['cambia foto', 'pon foto', 'cambiar imagen', 'actualiza foto', 'nueva foto', 'cambia perfil'],
+    REMOVE: ['elimina', 'sacar', 'kickea', 'expulsa', 'saca', 'fuera', 'eliminalo', 'sácalo', 'quitar'],
+    TAGALL: ['menciona todos', 'tagall', 'mencionar', 'aviso', 'notificar', 'menciónalos']
+};
+
 async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command }) {
     if (!m.isGroup) return m.reply('😒 ¿De verdad esperabas que hiciera algo en privado? Solo sirvo para grupos.')
     
@@ -13,32 +23,38 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin
     
     if (!isBotAdmin) return m.reply('🙄 Soy un gato ocupado. Necesito ser administrador para molestarte y hacer estas cosas. ¡Arregla eso!')
 
-    let action = m.text.substring(command.length).toLowerCase().trim()
+    let actionText = m.text.substring(command.length).toLowerCase().trim()
+    if (!actionText) return m.reply(`*Instrucciones de Jiji. No me hagas repetirlo:*\n\n🔑 *Grupo:* jiji cierra el grupo | jiji abre el grupo\n📝 *Metadatos:* jiji cambia el nombre a [nombre] | jiji cambia la foto (responde a una imagen)\n✂️ *Mantenimiento:* jiji elimina a @user | jiji menciona a todos`)
 
-    if (!action) return m.reply(`*Instrucciones para Jiji. No me hagas repetirlo:*
-🔑 *Cerrar/Abrir:* jiji cierra el grupo | jiji abre el grupo
-📝 *Metadatos:* jiji cambia el nombre a [nombre] | jiji cambia la foto (responde a una imagen)
-✂️ *Mantenimiento:* jiji elimina a @user | jiji menciona a todos`)
+    const actionWords = actionText.split(/\s+/).slice(0, 3).join(' ')
+    let actionFound = false;
 
-    if (action.includes('cierra') || action.includes('cerrar') || action.includes('bloquear') || action.includes('ciérralo')) {
+    // --- CERRAR GRUPO ---
+    if (ACTION_SYNONYMS.CLOSE.some(syn => actionWords.includes(syn))) {
         await conn.groupSettingUpdate(m.chat, 'announcement')
         m.reply('🔒 Hecho. Silencio total. Ahora, hazme caso.')
+        actionFound = true;
 
-    } else if (action.includes('abre') || action.includes('abrir') || action.includes('desbloquear') || action.includes('ábrelo')) {
+    // --- ABRIR GRUPO ---
+    } else if (ACTION_SYNONYMS.OPEN.some(syn => actionWords.includes(syn))) {
         await conn.groupSettingUpdate(m.chat, 'not_announcement')
         m.reply('🔓 ¡Qué fastidio! Grupo abierto. Que empiece el ruido.')
+        actionFound = true;
 
-    } else if (action.includes('cambia el nombre') || action.includes('renombrar') || action.includes('ponle nombre')) {
-        let newSubject = m.text.substring(m.text.toLowerCase().indexOf('nombre') + 'nombre'.length).trim()
+    // --- CAMBIAR NOMBRE DEL GRUPO ---
+    } else if (ACTION_SYNONYMS.RENAME.some(syn => actionWords.includes(syn))) {
+        let newSubject = actionText.replace(new RegExp(ACTION_SYNONYMS.RENAME.join('|'), 'gi'), '').trim()
         
         if (!newSubject) return m.reply('😒 ¿Acaso esperas que adivine el nombre? Dímelo.')
         if (newSubject.length > 25) return m.reply('🙄 El nombre no es una novela. Menos de 25 caracteres.')
 
         await conn.groupUpdateSubject(m.chat, newSubject)
         m.reply(`✅ Título cambiado a: *${newSubject}*. Qué creatividad.`)
+        actionFound = true;
 
-    } else if (action.includes('cambia la descripción') || action.includes('pon descripción') || action.includes('descr') || action.includes('descripción')) {
-        let newDesc = m.text.substring(m.text.toLowerCase().indexOf('descripción') + 'descripción'.length).trim()
+    // --- CAMBIAR DESCRIPCIÓN DEL GRUPO ---
+    } else if (ACTION_SYNONYMS.DESC.some(syn => actionWords.includes(syn))) {
+        let newDesc = actionText.replace(new RegExp(ACTION_SYNONYMS.DESC.join('|'), 'gi'), '').trim()
         
         if (!newDesc && m.quoted && m.quoted.text) {
             newDesc = m.quoted.text.trim()
@@ -48,8 +64,10 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin
         
         await conn.groupUpdateDescription(m.chat, newDesc)
         m.reply('✅ Descripción actualizada. Espero que sirva de algo.')
+        actionFound = true;
 
-    } else if (action.includes('cambia la foto') || action.includes('pon foto') || action.includes('cambiar imagen')) {
+    // --- CAMBIAR FOTO DEL GRUPO ---
+    } else if (ACTION_SYNONYMS.PHOTO.some(syn => actionWords.includes(syn))) {
         let q = m.quoted ? m.quoted : m
         let mime = (q.msg || q).mimetype || q.mediaType || ''
         
@@ -70,8 +88,10 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin
             console.error(e)
             m.reply('❌ Falló. Problema de la imagen. No es mi culpa.')
         }
+        actionFound = true;
         
-    } else if (action.includes('elimina') || action.includes('eliminalo') || action.includes('sácalo') || action.includes('fuera')) {
+    // --- ELIMINAR USUARIOS ---
+    } else if (ACTION_SYNONYMS.REMOVE.some(syn => actionWords.includes(syn))) {
         let users = m.mentionedJid.filter(u => u.endsWith('@s.whatsapp.net'))
         
         if (users.length === 0 && m.quoted) {
@@ -93,26 +113,29 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin
             await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
             m.reply(`🧹 Uno menos. @${user.split('@')[0]} ha sido expulsado. La paz sea contigo (por ahora).`)
         }
+        actionFound = true;
 
-    } else if (action.includes('menciona todos') || action.includes('tagall') || action.includes('menciónalos')) {
+    // --- MENCIONAR A TODOS (TAGALL) ---
+    } else if (ACTION_SYNONYMS.TAGALL.some(syn => actionWords.includes(syn))) {
         let members = participants.map(p => p.id)
-        let mentionText = '📢 ¡Despierten! Jiji los llama:\n\n'
         
-        let customText = m.text.substring(m.text.toLowerCase().indexOf('menciona') + 'menciona'.length).trim()
-        if(customText) {
-            mentionText = `📢 Tienen un mensaje de @${m.sender.split('@')[0]}:\n\n` + customText + '\n\n'
-        }
+        let customText = actionText.replace(new RegExp(ACTION_SYNONYMS.TAGALL.join('|'), 'gi'), '').trim()
         
+        let mentionText = `📢 Tienen un mensaje de @${m.sender.split('@')[0]}:\n\n` + (customText || '¡Presten atención, por si les importa algo en la vida!') + '\n\n'
         mentionText += members.map(jid => `@${jid.split('@')[0]}`).join(' ')
         
         conn.sendMessage(m.chat, { 
             text: mentionText, 
             contextInfo: { mentionedJid: members } 
         }, { quoted: m })
-        
-    } else {
-        m.reply('🙄 No entendí esa orden. Si vas a molestarme, al menos sé claro.')
+        actionFound = true;
     }
+    
+    // Si se encontró una palabra de acción, pero la acción falló, la IA no debe responder.
+    if (actionFound) return true;
+    
+    // Si no se encontró ninguna acción específica, se pasa a la IA.
+    return false;
 }
 
 
@@ -131,8 +154,8 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, isAdmin, i
     
     if (mainCommand === 'jiji') {
         const commandParams = { isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command: 'jiji' };
-        await handleJijiCommand(m, conn, commandParams);
-        return true; 
+        const executedAction = await handleJijiCommand(m, conn, commandParams);
+        if (executedAction) return true; 
     }
 
     if (prefixRegex.test(m.text)) return true 
@@ -155,7 +178,8 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, isAdmin, i
 
         await this.sendPresenceUpdate('composing', m.chat)
 
-        const adminKeywords = /cierra|abre|elimina|cambia la foto|cambia el nombre|cambia la descripción|menciona todos/i;
+        const adminKeywords = new RegExp(`(${Object.values(ACTION_SYNONYMS).flat().join('|')})`, 'i');
+
         if (adminKeywords.test(query)) {
              await this.reply(m.chat, '🙄 Eso es trabajo de mantenimiento, no una pregunta existencial. No me mezcles en tus tareas de administrador.', m);
              return;
