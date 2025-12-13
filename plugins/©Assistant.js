@@ -16,7 +16,22 @@ const ACTION_SYNONYMS = {
     TAGALL: ['menciona todos', 'tagall', 'mencionar', 'aviso', 'notificar', 'menciónalos']
 };
 
-async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command }) {
+async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, participants, groupMetadata, command }) {
+    if (!m.isGroup) {
+        m.reply('😒 ¿De verdad esperabas que hiciera algo en privado? Solo sirvo para grupos.');
+        return true; 
+    }
+
+    // --- CÁLCULO DE PERMISOS ---
+    const groupAdmins = participants.filter(p => p.admin)
+    const isAdmin = groupAdmins.some(p => p.id === m.sender)
+    const isBotAdmin = groupAdmins.some(p => p.id === conn.user.jid)
+    // ----------------------------
+
+    if (!isAdmin) {
+        m.reply('😼 Te crees importante, ¿verdad? Solo hablo con los administradores, humano.');
+        return true; 
+    }
     
     if (!isBotAdmin) {
         m.reply('🙄 Soy un gato ocupado. Necesito ser administrador para molestarte y hacer estas cosas. ¡Arregla eso!');
@@ -144,7 +159,7 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, isAdmin
 }
 
 
-handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command }) {
+handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, participants, groupMetadata, command }) {
     let user = global.db.data.users[m.sender]
     let chat = global.db.data.chats[m.chat]
 
@@ -158,16 +173,7 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, isAdmin, i
     let [mainCommand] = (m.text || '').trim().toLowerCase().split(/\s+/);
     
     if (mainCommand === 'jiji') {
-        if (!m.isGroup) {
-            conn.reply(m.chat, '😒 ¿De verdad esperabas que hiciera algo en privado? Solo sirvo para grupos.', m);
-            return true;
-        }
-        if (!isAdmin) {
-            conn.reply(m.chat, '😼 Te crees importante, ¿verdad? Solo hablo con los administradores, humano.', m);
-            return true;
-        }
-
-        const commandParams = { isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command: 'jiji' };
+        const commandParams = { isROwner, isOwner, isRAdmin, participants, groupMetadata, command: 'jiji' };
         const executedAction = await handleJijiCommand(m, conn, commandParams);
         if (executedAction) return true; 
     }
