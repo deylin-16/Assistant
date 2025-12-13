@@ -173,16 +173,25 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 
     let jid = m.sender
 
-    const fkontak = {
-      key: { fromMe: false, participant: jid },
-      message: {
-        documentMessage: {
-          title: `「 ${title} 」`,
-          fileName: global.bot || "Bot",
-          jpegThumbnail: thumb3
-        }
-      }
+        let assistantName;
+    if (m.isGroup && typeof global.getGroupAssistantConfig === 'function') {
+        const config = global.getGroupAssistantConfig(m.chat);
+        assistantName = config.assistantName;
+    } else {
+        assistantName = global.bot;
     }
+
+    const fkontak = {
+        key: { fromMe: false, participant: jid },
+        message: {
+            documentMessage: {
+                title: `「 ${title} 」`,
+                fileName: assistantName || "Bot",
+                jpegThumbnail: thumb3
+            }
+        }
+    }
+
 
     
     
