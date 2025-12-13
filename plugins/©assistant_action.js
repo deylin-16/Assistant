@@ -248,7 +248,7 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
     }
 }
 
-handler.command = ['jiji', 'kiki', 'bot', 'adminbot', 'cmd', 'asistente']
+handler.command = ['jiji']
 handler.group = true
 handler.admin = true
 
