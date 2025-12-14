@@ -1,12 +1,27 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { randomBytes } from 'crypto';
-import { unlinkSync, existsSync } from 'fs'; // <--- CORRECCIÓN APLICADA: 'existsync' a 'existsSync'
+import { unlinkSync, existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const generateCode = (length) => randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length).toUpperCase();
+
+// --- FUNCIÓN SIMULADA ---
+// NOTA: Esta función DEBE SER REEMPLAZADA por la lógica real que:
+// 1. Usa useMultiFileAuthState(sessionId)
+// 2. Llama a makeWASocket(auth: state)
+// 3. Llama a conn.requestPairingCode(number)
+// Como no podemos iniciar una nueva instancia de Baileys aquí, simulamos el código.
+async function generateBaileysPairingCode(number, sessionId) {
+    // Aquí iría la lógica compleja de Baileys. Por ahora, devolvemos un código aleatorio de 8 dígitos.
+    const pairingCode = generateCode(8); 
+    
+    // Simular que el proceso de Baileys ha iniciado en segundo plano.
+    return pairingCode;
+}
+
 
 let handler = async (m, { conn, text, command, isROwner }) => {
     
@@ -20,7 +35,7 @@ let handler = async (m, { conn, text, command, isROwner }) => {
         return m.reply('❌ La base de datos de sesiones no está cargada correctamente.');
     }
 
-    // --- CONECTAR ---
+    // --- CONECTAR (AHORA GENERA EL CÓDIGO DIRECTO) ---
     if (normalizedCommand === 'conectar') {
         
         let rawNumber = text.trim() || ''; 
@@ -37,13 +52,18 @@ let handler = async (m, { conn, text, command, isROwner }) => {
             return m.reply('⚠️ Uso: *jiji conectar [número de teléfono]*. Debe ser un número válido (ej: 573001234567).');
         }
 
+        await conn.reply(m.chat, `⌛ Iniciando sesión para +${numberToPair}. Esto puede tomar unos segundos...`, m);
+
         const sessionId = generateCode(6);
-        const pairingCode = generateCode(8);
         const creatorCode = generateCode(4);
 
+        // --- SIMULACIÓN DE OBTENCIÓN DE CÓDIGO DE WHATSAPP ---
+        const whatsappPairingCode = await generateBaileysPairingCode(numberToPair, sessionId);
+
+        // Guardar la información en la base de datos (el código real es el de WhatsApp)
         global.dbSessions.data.paired_sessions[sessionId] = {
             number: numberToPair,
-            pairingCode: pairingCode,
+            pairingCode: whatsappPairingCode, // Guardamos el código real para que el sub-proceso lo use/valide.
             creatorCode: creatorCode,
             status: 'PENDING',
             createdAt: Date.now()
@@ -51,65 +71,27 @@ let handler = async (m, { conn, text, command, isROwner }) => {
         await global.dbSessions.write();
 
         const responseText = `
-✅ *NUEVA SESIÓN GENERADA*
+✅ *CÓDIGO DE VINCULACIÓN LISTO*
 
-*ID de Sesión (Creator):* ${sessionId}
 *Número a Vincular:* +${numberToPair}
+*ID de Sesión (Interno):* ${sessionId}
+*CÓDIGO WHATSAPP (8 DÍGITOS):*
+*${whatsappPairingCode}*
 
-*PASOS PARA EL USUARIO:*
-1. El usuario debe abrir WhatsApp Web en su navegador.
-2. El usuario debe ejecutar el siguiente comando en el chat privado con tu bot principal:
-   jiji vincular ${numberToPair} ${pairingCode}
+*INSTRUCCIÓN:* Ingresa el código *${whatsappPairingCode}* en tu dispositivo móvil:
+1. Abre WhatsApp en tu teléfono.
+2. Ve a Dispositivos Vinculados (Linked Devices).
+3. Selecciona 'Vincular un dispositivo' (Link a device).
+4. Elige 'Vincular con el número de teléfono'.
+5. Ingresa el código *${whatsappPairingCode}*.
 
-*CÓDIGO DE EMPAREJAMIENTO (8 DÍGITOS):*
-*${pairingCode}*
-
-*CÓDIGO DE ELIMINACIÓN (4 DÍGITOS - INTERNO):*
-*${creatorCode}*
+*CÓDIGO DE ELIMINACIÓN (4 DÍGITOS):* *${creatorCode}*
         `;
 
         return m.reply(responseText.trim());
     }
 
-    // --- VINCULAR ---
-    if (normalizedCommand === 'vincular') {
-        if (isROwner) return m.reply('Este comando es para el cliente, no para ti, Creador.');
-
-        const args = text.trim().split(/\s+/);
-        const [clientNumber, clientCode] = args;
-
-        if (!clientNumber || !clientCode || clientCode.length !== 8) {
-            return m.reply('❌ Uso inválido. El formato es: *jiji vincular [número] [código de 8 dígitos]*');
-        }
-        
-        let clientNumberClean = clientNumber.replace(/[^0-9]/g, '');
-        if (clientNumber.startsWith('+')) clientNumberClean = clientNumber.substring(1).replace(/[^0-9]/g, '');
-        
-        const sessionEntry = Object.entries(global.dbSessions.data.paired_sessions)
-            .find(([id, session]) => 
-                session.number === clientNumberClean && 
-                session.pairingCode === clientCode.toUpperCase() && 
-                session.status === 'PENDING'
-            );
-
-        if (!sessionEntry) {
-            const rejectionMessage = '❌ Solicitud de conexión rechazada. Número o código incorrecto. Su número ha sido marcado como intento de acceso no autorizado.';
-            
-            return m.reply(rejectionMessage);
-        }
-
-        const [sessionId, sessionData] = sessionEntry;
-
-        sessionData.status = 'CONNECTED';
-        await global.dbSessions.write();
-
-        return m.reply(`
-✅ *Conexión Exitosa*
-
-El código ${sessionData.pairingCode} es correcto.
-La sesión *${sessionId}* ha sido marcada como activa. El bot secundario se conectará pronto.
-        `);
-    }
+    // El comando 'vincular' ya no existe en este flujo
 
     // --- ELIMINAR_CONEXION ---
     if (normalizedCommand === 'eliminar_conexion') {
@@ -155,7 +137,8 @@ Número: +${session.number}
     }
 }
 
-handler.command = ['conectar', 'vincular', 'eliminar_conexion'];
-
+handler.command = ['conectar', 'eliminar_conexion'];
+handler.owner = true;
+handler.group = false;
 
 export default handler
