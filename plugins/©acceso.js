@@ -9,6 +9,7 @@ import { makeWASocket } from '../lib/simple.js'
 import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
 import { fork } from 'child_process' 
+import { unlinkSync, existsSync } from 'fs'; // Importación correcta
 
 // Importar el handler principal para usarlo en las nuevas sesiones
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
@@ -18,9 +19,7 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     makeCacheableSignalKeyStore, 
-    fetchLatestBaileysVersion,
-    // CORRECCIÓN APLICADA: existsync -> existsSync
-    // Nota: existsSync ya está importado directamente en la línea 4
+    fetchLatestBaileysVersion
 } = baileys; 
 
 const logger = pino({ level: "fatal" }) 
@@ -130,21 +129,13 @@ export async function ConnectAdditionalSession(options) {
     let isInit = true
     let codeSent = false 
 
-    async function connectionUpdate(update) {
-        const { connection, lastDisconnect, isNewLogin, qr } = update
-
-        if (isNewLogin) sock.isInit = false
-
-        // Ajuste: Esperar el estado 'open' pero con credenciales vacías para solicitar el código.
-        if (connection === 'open' && !sock.authState.creds.me && !codeSent) {
-            
-             // Pequeño delay para asegurar estabilidad
-             await delay(2000); 
-
+    // --- LÓGICA DE SOLICITUD DE CÓDIGO INMEDIATA ---
+    // Usamos un proceso externo para intentar solicitar el código inmediatamente después de la conexión.
+    // Esto es más seguro que esperar al connectionUpdate.
+    if (!sock.authState.creds.me) {
+        (async () => {
+            await delay(1000); // Esperar 1 segundo para la inicialización
             try {
-                // El error 428/Connection Closed ocurre a menudo porque Baileys intenta solicitar el código
-                // antes de que el servidor esté listo. Esperar al estado 'open' ayuda, pero
-                // si falla, cerramos la conexión para forzar una reconexión limpia.
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret.match(/.{1,4}/g)?.join("-")
 
@@ -161,18 +152,21 @@ export async function ConnectAdditionalSession(options) {
                 await conn.reply(m.chat, rtx2.trim(), m);
                 codeSent = true 
             } catch (e) {
+                // Si falla (como el error 428/Connection Closed), el connectionUpdate se encargará de reconectar.
                 console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
-                // Si falla, cerramos la conexión. El handler de 'close' intentará reconectar.
-                if (e.message.includes('Connection Closed') || e.message.includes('428')) {
-                    await conn.reply(m.chat, `⚠️ Error al obtener código (Connection Closed/428). Reiniciando sesión *${sessionId}*...`, m);
-                    // Forzar el cierre para que el bloque 'close' intente la reconexión.
-                    sock.ws.close();
-                } else {
-                     await conn.reply(m.chat, `⚠️ Error desconocido al obtener código: ${e.message}`, m);
-                }
+                await conn.reply(m.chat, `⚠️ Error inicial al obtener código. Reintentando la conexión...`, m);
+                // Si falla, cerramos el socket para forzar un reintento a través de connectionUpdate.
+                sock.ws.close(); 
             }
-            return
-        }
+        })();
+    }
+    // --- FIN LÓGICA DE SOLICITUD DE CÓDIGO INMEDIATA ---
+
+
+    async function connectionUpdate(update) {
+        const { connection, lastDisconnect, isNewLogin, qr } = update
+
+        if (isNewLogin) sock.isInit = false
 
         if (qr && !codeSent) { 
             console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Usando código de emparejamiento como primario.`));
