@@ -1,137 +1,145 @@
 import { fileURLToPath } from 'url';
-import path from 'path';
-import { useMultiFileAuthState, makeCacheableSignalKeyStore, jidNormalizedUser } from '@whiskeysockets/baileys';
-import { makeWASocket } from '../lib/simple.js';
-import chalk from 'chalk';
-import Pino from 'pino';
-import fs, { rmSync } from 'fs';
-import store from '../lib/store.js';
+import { dirname, join } from 'path';
+import { randomBytes } from 'crypto';
+import { unlinkSync, existsSync } from 'fs';
 
-const handler = async (m, { conn, text, command, isROwner }) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const generateCode = (length) => randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length).toUpperCase();
+
+let handler = async (m, { conn, text, command, isROwner }) => {
+    
     if (!isROwner) {
-         return conn.reply(m.chat, `Solo con Deylin-Eliac hablo de eso w.`, m);
+        return m.reply('❌ Acceso denegado. Solo el Creador puede gestionar las conexiones.');
     }
 
-    const args = text.split(/\s+/).filter(v => v);
+    if (!global.dbSessions || !global.dbSessions.data) {
+        return m.reply('❌ La base de datos de sesiones no está cargada correctamente.');
+    }
 
-    switch (command) {
-        case 'crear_acceso':
-            if (args.length !== 1 || !/^\d+$/.test(args[0])) {
-                return conn.reply(m.chat, `*Comando inválido.* Usa: Crear_acceso (número de teléfono sin el +)`, m);
-            }
-            
-            const targetNumberCreate = args[0].replace(/\D/g, '');
-            const newCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-            
-            if (global.usedNumbers.has(targetNumberCreate)) {
-                return conn.reply(m.chat, `⚠️ *ADVERTENCIA*: El número *${targetNumberCreate}* ya tiene una sesión activa o pendiente.`, m);
-            }
+    const [action, ...args] = text.trim().split(/\s+/);
+    
+    if (command === 'conectar') {
+        const numberToPair = args[0] ? args[0].replace(/[^0-9]/g, '') : '';
 
-            global.authCodeMap.set(newCode, {
-                number: targetNumberCreate,
-                used: false,
-                creatorJid: m.sender,
-                createdAt: Date.now()
-            });
-            
-            conn.reply(m.chat, 
-                `*🔑 CÓDIGO DE ACCESO GENERADO*:\n\n` +
-                `*Número Asociado:* ${targetNumberCreate}\n` +
-                `*Código de Acceso (5 dígitos):* ${newCode}\n\n` +
-                `_Solo puede usarse una vez con el comando:_ \n` +
-                `*Vincular ${targetNumberCreate} ${newCode}*`, m);
-            break;
+        if (!numberToPair || numberToPair.length < 8) {
+            return m.reply('⚠️ Uso: *jiji conectar [número de teléfono]*. Debe ser un número válido (ej: 573001234567).');
+        }
 
-        case 'vincular':
-            if (args.length !== 2) {
-                return conn.reply(m.chat, `*Comando inválido.* Usa: Vincular (número de teléfono) (código de acceso)`, m);
-            }
-            
-            const [targetNumber, targetCode] = args;
-            const targetNumberClean = targetNumber.replace(/\D/g, '');
-            const targetCodeUpper = targetCode.toUpperCase();
-            
-            const authData = global.authCodeMap.get(targetCodeUpper);
+        const sessionId = generateCode(6);
+        const pairingCode = generateCode(8);
+        const creatorCode = generateCode(4);
 
-            if (!authData || authData.used || authData.number !== targetNumberClean) {
-                return conn.reply(m.chat, `❌ *ERROR DE CONEXIÓN*:\n\nNúmero asociado o código de acceso inválido/usado.`, m);
-            }
-            
-            authData.used = true;
-            global.authCodeMap.set(targetCodeUpper, authData);
-            
-            if (global.usedNumbers.has(targetNumberClean)) {
-                return conn.reply(m.chat, `⚠️ *ADVERTENCIA*: El número *${targetNumberClean}* ya está en uso.`, m);
-            }
-            
-            global.usedNumbers.add(targetNumberClean);
+        global.dbSessions.data.paired_sessions[sessionId] = {
+            number: numberToPair,
+            pairingCode: pairingCode,
+            creatorCode: creatorCode,
+            status: 'PENDING',
+            createdAt: Date.now()
+        };
+        await global.dbSessions.write();
 
-            const sessionID = `${global.ACCESS_SESSION_PREFIX}${targetNumberClean}`;
-            const sessionPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', global.sessions, sessionID);
-            
-            const { state, saveState, saveCreds } = await useMultiFileAuthState(sessionPath);
-            
-            const connectionOptionsJadibot = {
-                logger: Pino({ level: 'silent' }),
-                printQRInTerminal: false,
-                mobile: true, // Se mantiene TRUE para forzar el método de 8 dígitos
-                browser: ['WhatsApp-bot-Subsession', 'Edge', '20.0.04'],
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
-                },
-                markOnlineOnConnect: true,
-                generateHighQualityLinkPreview: true,
-                getMessage: async (clave) => {
-                    let jid = jidNormalizedUser(clave.remoteJid);
-                    let msg = await store.loadMessage(jid, clave.id);
-                    return msg?.message || "";
-                },
-            };
+        const responseText = `
+✅ *NUEVA SESIÓN GENERADA*
 
-            const subConn = makeWASocket(connectionOptionsJadibot);
-            
-            subConn.numberConn = targetNumberClean;
-            subConn.saveCreds = saveCreds;
-            global.conns.set(subConn.user.jid, subConn);
-            
-            subConn.ev.on('connection.update', global.connectionUpdateJadibot.bind(subConn));
-            subConn.ev.on('creds.update', subConn.saveCreds.bind(subConn, true));
-            
-            await global.subreloadHandler(false);
+*ID de Sesión (Creator):* ${sessionId}
+*Número a Vincular:* +${numberToPair}
 
-            // Iniciar solicitud de código de emparejamiento (8 dígitos)
-            // Si esto falla, el error 401 aparecerá en la consola.
-            let codeBot = await subConn.requestPairingCode(targetNumberClean)
-            codeBot = codeBot?.match(/.{1,4}/g)?.join("-") || codeBot
-            
-            conn.reply(m.chat, 
-                `✅ *VINCULACIÓN INICIADA*\n\n` +
-                `*Número:* ${targetNumberClean}\n\n` +
-                `El usuario debe usar el siguiente código *dentro de WhatsApp* (Dispositivos Vinculados > Vincular con número de teléfono):\n\n` +
-                `*Código de Emparejamiento (8 dígitos):* \n\n` +
-                `*${codeBot}*`, m);
-            
-            break;
+*PASOS PARA EL USUARIO:*
+1. El usuario debe abrir WhatsApp Web en su navegador.
+2. El usuario debe ejecutar el siguiente comando en el chat privado con tu bot principal:
+   jiji vincular ${numberToPair} ${pairingCode}
 
-        case 'conexiones':
-            const activeConnections = Array.from(global.conns.values())
-                .filter(c => c.user)
-                .map(c => `- *[${c.numberConn}]* ID: ${c.user.jid.split('@')[0]}`);
-            
-            const response = activeConnections.length > 0 
-                ? `*🔗 CONEXIONES DE SUBSECCIÓN ACTIVAS:*\n\n${activeConnections.join('\n')}\n\n*TOTAL: ${activeConnections.length}*`
-                : `*❌ NO HAY CONEXIONES ACTIVAS EN ESTE MOMENTO.*`;
-            
-            conn.reply(m.chat, response, m);
-            break;
+*CÓDIGO DE EMPAREJAMIENTO (8 DÍGITOS):*
+*${pairingCode}*
 
-        default:
-            break;
+*CÓDIGO DE ELIMINACIÓN (4 DÍGITOS - INTERNO):*
+*${creatorCode}*
+        `;
+
+        return m.reply(responseText.trim());
+    }
+
+    if (command === 'vincular') {
+        if (isROwner) return m.reply('Este comando es para el cliente, no para ti, Creador.');
+
+        const [clientNumber, clientCode] = args;
+
+        if (!clientNumber || !clientCode || clientCode.length !== 8) {
+            return m.reply('❌ Uso inválido. El formato es: *jiji vincular [número] [código de 8 dígitos]*');
+        }
+        
+        const sessionEntry = Object.entries(global.dbSessions.data.paired_sessions)
+            .find(([id, session]) => 
+                session.number === clientNumber.replace(/[^0-9]/g, '') && 
+                session.pairingCode === clientCode.toUpperCase() && 
+                session.status === 'PENDING'
+            );
+
+        if (!sessionEntry) {
+            const rejectionMessage = '❌ Solicitud de conexión rechazada. Número o código incorrecto. Su número ha sido marcado como intento de acceso no autorizado.';
+            
+            return m.reply(rejectionMessage);
+        }
+
+        const [sessionId, sessionData] = sessionEntry;
+
+        sessionData.status = 'CONNECTED';
+        await global.dbSessions.write();
+
+        return m.reply(`
+✅ *Conexión Exitosa*
+
+El código ${sessionData.pairingCode} es correcto.
+La sesión *${sessionId}* ha sido marcada como activa. El bot secundario se conectará pronto.
+        `);
+    }
+
+
+    if (command === 'eliminar_conexion') {
+        const [sessionId, creatorCode] = args;
+
+        if (!sessionId || !creatorCode || creatorCode.length !== 4) {
+            return m.reply('⚠️ Uso: *jiji eliminar_conexion [ID de Sesión] [Código de 4 dígitos]*.');
+        }
+
+        const session = global.dbSessions.data.paired_sessions[sessionId.toUpperCase()];
+
+        if (!session) {
+            return m.reply(`❌ Sesión con ID ${sessionId} no encontrada.`);
+        }
+
+        if (session.creatorCode !== creatorCode.toUpperCase()) {
+            return m.reply('❌ Código de eliminación incorrecto. No se puede proceder.');
+        }
+
+        const sessionPath = join(global.sessions, `${sessionId.toUpperCase()}-creds.json`);
+        
+        if (existsSync(sessionPath)) {
+             try {
+                unlinkSync(sessionPath);
+                m.reply(`🗑️ Se eliminó el archivo de credenciales para la sesión ${sessionId}.`);
+             } catch (e) {
+                console.error(e);
+                m.reply(`⚠️ Error al borrar el archivo físico de credenciales, pero la base de datos se actualizará.`);
+             }
+        }
+        
+        delete global.dbSessions.data.paired_sessions[sessionId.toUpperCase()];
+        await global.dbSessions.write();
+
+        return m.reply(`
+🗑️ *SESIÓN ELIMINADA*
+
+La conexión *${sessionId}* ha sido eliminada por el Creador.
+Número: +${session.number}
+        `);
     }
 }
 
-handler.command = ['crear_acceso', 'vincular', 'conexiones', 'setassistant']
-handler.rowner = true
+handler.command = ['conectar', 'vincular', 'eliminar_conexion'];
+handler.owner = true;
+handler.group = false;
 
 export default handler
