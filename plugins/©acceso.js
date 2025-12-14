@@ -129,7 +129,7 @@ export async function ConnectAdditionalSession(options) {
     let isInit = true
     let codeSent = false 
     
-    const rtx2 = "*❀ SER BOT • MODE CODE*\n\n✰ Usa este Código para convertirte en un *Sub-Bot* Temporal.\n\n\`1\` » Haga clic en los tres puntos en la esquina superior derecha\n\n\`2\` » Toque dispositivos vinculados\n\n\`3\` » Selecciona Vincular con el número de teléfono\n\n\`4\` » Escriba el Código para iniciar sesion con el bot\n\n✧ No es recomendable usar tu cuenta principal."
+    
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
@@ -146,7 +146,7 @@ export async function ConnectAdditionalSession(options) {
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
-                await conn.sendMessage(m.chat, {text : rtx2}, { quoted: m })
+                
                 await conn.reply(m.chat, secret, m)
                 
                 console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
