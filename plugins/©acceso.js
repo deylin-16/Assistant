@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
 import { fork } from 'child_process' 
 
+// Importar el handler principal para usarlo en las nuevas sesiones
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
 let mainHandlerFunction = mainHandlerModule?.handler || (() => {})
 
@@ -17,7 +18,9 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     makeCacheableSignalKeyStore, 
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    // CORRECCIÓN APLICADA: existsync -> existsSync
+    // Nota: existsSync ya está importado directamente en la línea 4
 } = baileys; 
 
 const logger = pino({ level: "fatal" }) 
@@ -132,10 +135,16 @@ export async function ConnectAdditionalSession(options) {
 
         if (isNewLogin) sock.isInit = false
 
-        // Bloque modificado para forzar la solicitud de código de emparejamiento
-        if (connection === 'connecting' && !codeSent && !sock.authState.creds.me) {
+        // Ajuste: Esperar el estado 'open' pero con credenciales vacías para solicitar el código.
+        if (connection === 'open' && !sock.authState.creds.me && !codeSent) {
+            
+             // Pequeño delay para asegurar estabilidad
+             await delay(2000); 
+
             try {
-                // Forzar la solicitud del código de emparejamiento por teléfono
+                // El error 428/Connection Closed ocurre a menudo porque Baileys intenta solicitar el código
+                // antes de que el servidor esté listo. Esperar al estado 'open' ayuda, pero
+                // si falla, cerramos la conexión para forzar una reconexión limpia.
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret.match(/.{1,4}/g)?.join("-")
 
@@ -153,21 +162,20 @@ export async function ConnectAdditionalSession(options) {
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
-                if (!qr) { // Si no hay QR disponible, avisar del error
-                     await conn.reply(m.chat, `⚠️ No se pudo obtener el código de emparejamiento. Intente nuevamente.`, m);
-                     // Cerrar y eliminar sesión fallida para evitar bucle
-                     fs.rmdirSync(pathSubSession, { recursive: true });
-                     sock.ws.close();
+                // Si falla, cerramos la conexión. El handler de 'close' intentará reconectar.
+                if (e.message.includes('Connection Closed') || e.message.includes('428')) {
+                    await conn.reply(m.chat, `⚠️ Error al obtener código (Connection Closed/428). Reiniciando sesión *${sessionId}*...`, m);
+                    // Forzar el cierre para que el bloque 'close' intente la reconexión.
+                    sock.ws.close();
+                } else {
+                     await conn.reply(m.chat, `⚠️ Error desconocido al obtener código: ${e.message}`, m);
                 }
             }
             return
         }
 
-        // Si aparece QR (como fallback o si el pairing code falla), lo ignoramos según la solicitud, 
-        // pero idealmente el bloque de arriba lo previene.
         if (qr && !codeSent) { 
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Usando código de emparejamiento.`));
-            // No hacemos nada para no enviar el QR, confiamos en el modo pairing code.
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Usando código de emparejamiento como primario.`));
         } 
 
         if (connection === 'close') {
@@ -205,7 +213,6 @@ export async function ConnectAdditionalSession(options) {
                 global.additionalConns.push(sock)
             }
             if (codeSent) {
-                // Notificar al dueño que la vinculación fue exitosa
                 await conn.reply(m.chat, `🎉 *Sesión ID: ${sessionId}* vinculada y activa.`, m);
             }
         }
