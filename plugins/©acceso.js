@@ -18,10 +18,8 @@ let handler = async (m, { conn, text, command, isROwner }) => {
         return m.reply('❌ La base de datos de sesiones no está cargada correctamente.');
     }
 
-    const [action, ...args] = text.trim().split(/\s+/);
-    
     if (command === 'conectar') {
-        let numberToPair = args[0] || ''; 
+        let numberToPair = text.trim().split(/\s+/).slice(1).join(' ').trim() || '';
         
         if (numberToPair.startsWith('+')) {
             numberToPair = numberToPair.substring(1).replace(/[^0-9]/g, '');
@@ -70,7 +68,7 @@ let handler = async (m, { conn, text, command, isROwner }) => {
     if (command === 'vincular') {
         if (isROwner) return m.reply('Este comando es para el cliente, no para ti, Creador.');
 
-        const [clientNumber, clientCode] = args;
+        const [commandUsed, clientNumber, clientCode] = text.trim().split(/\s+/);
 
         if (!clientNumber || !clientCode || clientCode.length !== 8) {
             return m.reply('❌ Uso inválido. El formato es: *jiji vincular [número] [código de 8 dígitos]*');
@@ -107,7 +105,7 @@ La sesión *${sessionId}* ha sido marcada como activa. El bot secundario se cone
 
 
     if (command === 'eliminar_conexion') {
-        const [sessionId, creatorCode] = args;
+        const [commandUsed, sessionId, creatorCode] = text.trim().split(/\s+/);
 
         if (!sessionId || !creatorCode || creatorCode.length !== 4) {
             return m.reply('⚠️ Uso: *jiji eliminar_conexion [ID de Sesión] [Código de 4 dígitos]*.');
@@ -128,6 +126,7 @@ La sesión *${sessionId}* ha sido marcada como activa. El bot secundario se cone
         if (existsSync(sessionPath)) {
              try {
                 unlinkSync(sessionPath);
+                console.error(`Archivo de credenciales eliminado para la sesión: ${sessionId}`);
                 m.reply(`🗑️ Se eliminó el archivo de credenciales para la sesión ${sessionId}.`);
              } catch (e) {
                 console.error(e);
