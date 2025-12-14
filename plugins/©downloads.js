@@ -1,7 +1,16 @@
 import fetch from 'node-fetch';
 import { igdl } from 'ruhend-scraper';
 
-const processingResponse = "Procesando solicitud de descarga. Analizando metadatos del recurso web.";
+const processingResponses = [
+    "Procesando solicitud de descarga. Analizando metadatos del recurso web.",
+    "Inicializando protocolo de adquisición de contenido. Esperando respuesta del servidor de origen.",
+    "El sistema está realizando la depuración y estructuración del enlace.",
+    "Estableciendo conexión segura y validando el identificador del recurso.",
+    "Calculando la ruta óptima para la transferencia de archivos. Un momento de latencia es requerido.",
+    "Ejecutando la fase de 'fetch'. La descarga comenzará en breve.",
+    "Módulo de rastreo activo. Recuperando información del vídeo solicitado."
+];
+
 
 const errorResponses = {
     general: [
