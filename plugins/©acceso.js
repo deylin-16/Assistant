@@ -156,7 +156,6 @@ Número: +${session.number}
 }
 
 handler.command = ['conectar', 'vincular', 'eliminar_conexion'];
-handler.owner = true;
-handler.group = false;
+
 
 export default handler
