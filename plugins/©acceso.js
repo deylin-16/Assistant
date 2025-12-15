@@ -1,6 +1,6 @@
 import qrcode from "qrcode"
 import NodeCache from "node-cache"
-import fs, { rmdirSync } from "fs"
+import fs, { rmdirSync, existsSync, mkdirSync } from "fs"
 import path, { dirname } from "path"
 import pino from 'pino'
 import chalk from 'chalk'
@@ -8,7 +8,6 @@ import * as ws from 'ws'
 import { makeWASocket } from '../lib/simple.js'
 import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
-// Importar loadDatabase desde el índice principal
 import { loadDatabase } from '../index.js'; 
 
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
@@ -33,6 +32,14 @@ const msgRetryCache = new NodeCache()
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+function msToTime(duration) {
+    let seconds = Math.floor((duration / 1000) % 60),
+    minutes = Math.floor((duration / (1000 * 60)) % 60)
+    seconds = (seconds < 10) ? '0' + seconds : seconds
+    minutes = (minutes < 10) ? '0' + minutes : minutes
+    return minutes + ' m y ' + seconds + ' s '
+}
+
 let handler = async (m, { conn, args, usedPrefix, command, isROwner }) => {
 if (!isROwner) return m.reply(`❌ Solo el creador puede gestionar sesiones adicionales.`);
 
@@ -42,28 +49,33 @@ if (normalizedCommand === 'conectar') {
     let rawId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0].replace(/[^0-9]/g, '')
     if (rawId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
 
-    let sessionId = rawId.startsWith('+') ? rawId : `+${rawId}` 
+    let sessionId = rawId.startsWith('+') ? rawId : rawId
     let folderId = rawId
 
     const additionalConnsCount = global.additionalConns.length
     const MAX_SESSIONS = 30 
     if (additionalConnsCount >= MAX_SESSIONS) {
-    return conn.reply(m.chat, `❌ Máximo de ${MAX_SESSIONS} sesiones adicionales alcanzado.`, m)
+        return conn.reply(m.chat, `❌ Máximo de ${MAX_SESSIONS} sesiones adicionales alcanzado.`, m)
     }
 
     let pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, folderId)
 
-    if (fs.existsSync(pathSubSession) && fs.existsSync(path.join(pathSubSession, "creds.json"))) {
+    if (existsSync(pathSubSession) && existsSync(path.join(pathSubSession, "creds.json"))) {
         return conn.reply(m.chat, `⚠️ Ya existe una sesión activa o previa con el ID *${folderId}*. Si desea eliminarla use *${usedPrefix}eliminar_conexion ${folderId}*`, m)
     }
 
-    if (!fs.existsSync(pathSubSession)){
-        fs.mkdirSync(pathSubSession, { recursive: true })
+    if (!existsSync(pathSubSession)){
+        mkdirSync(pathSubSession, { recursive: true })
     }
 
-    await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${folderId}*. Número a vincular: *${sessionId}*. Esperando código de emparejamiento...`, m);
+    let time = global.db.data.users[m.sender]?.Subs + 120000 || 0
+    if (new Date - (global.db.data.users[m.sender]?.Subs || 0) < 120000) {
+    }
+
+    await conn.reply(m.chat, `⌛ Iniciando vinculación para ID: *${folderId}*. Esperando código de emparejamiento...`, m);
 
     ConnectAdditionalSession({ pathSubSession, m, conn, usedPrefix, sessionId, folderId })
+    global.db.data.users[m.sender].Subs = new Date * 1
 } 
 
 if (normalizedCommand === 'eliminar_conexion') {
@@ -73,9 +85,9 @@ if (normalizedCommand === 'eliminar_conexion') {
 
     const pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, folderId)
 
-    if (fs.existsSync(pathSubSession)) {
+    if (existsSync(pathSubSession)) {
          try {
-            const activeConnIndex = global.additionalConns.findIndex(c => path.basename(c.authState.path) === folderId);
+            const activeConnIndex = global.additionalConns.findIndex(c => path.basename(c.authState?.path) === folderId);
             if (activeConnIndex !== -1) {
                 const connToDelete = global.additionalConns[activeConnIndex];
                 connToDelete.ws.close();
@@ -86,7 +98,7 @@ if (normalizedCommand === 'eliminar_conexion') {
             rmdirSync(pathSubSession, { recursive: true });
             m.reply(`🗑️ Carpeta de sesión ${folderId} eliminada por completo.`);
          } catch (e) {
-            console.error(e);
+            console.error(`Error al borrar la sesión ${folderId}:`, e);
             m.reply(`⚠️ Error al borrar la carpeta física de la sesión ${folderId}.`);
          }
     } else {
@@ -101,26 +113,25 @@ handler.owner = true
 export default handler 
 
 export async function ConnectAdditionalSession(options) {
-    let { pathSubSession, m, conn, usedPrefix, sessionId, folderId } = options
+    let { pathSubSession, m, conn, sessionId, folderId } = options
 
     let { version } = await fetchLatestBaileysVersion()
     const msgRetry = (MessageRetryMap) => { }
     let { state, saveCreds } = await useMultiFileAuthState(pathSubSession) 
 
-    // Corrección para el TypeError: 'getMessage'
     const getMessageFunction = (conn && conn.options && conn.options.getMessage) ? conn.options.getMessage : undefined;
     
     const connectionOptions = {
         logger: logger,
         printQRInTerminal: false,
-        mobile: false, // Aseguramos que no use la API móvil obsoleta
+        mobile: false,
         auth: { 
             creds: state.creds, 
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
         },
         msgRetry,
         msgRetryCache,
-        browser: ['Ubuntu', 'Chrome', '109.0.5414.0'], // Configuración de browser estándar
+        browser: ['Ubuntu', 'Chrome', '109.0.5414.0'],
         version: version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined,
@@ -143,18 +154,24 @@ export async function ConnectAdditionalSession(options) {
         if (connection === 'connecting' && !sock.authState.creds.registered && !codeSent) {
              console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conectando para +${folderId}. Solicitando código de emparejamiento...`));
              try {
-                // Pedir el código directamente al iniciar la conexión si no está registrado
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
-                // Notificar al chat principal del código generado
-                await conn.reply(m.chat, `**CÓDIGO DE VINCULACIÓN (+${folderId})**:\n\n*${secret}*\n\n_Dirígete a tu móvil: Dispositivos Vinculados > Vincular con el número de teléfono, e introduce este código._`, m)
+                await conn.reply(m.chat, `
+*CÓDIGO DE VINCULACIÓN*
+
+*ID de Sesión:* ${folderId}
+*Número:* ${sessionId}
+
+*CÓDIGO:* \`\`\`${secret}\`\`\`
+
+_Dirígete a tu móvil: *Dispositivos Vinculados* > *Vincular con el número de teléfono* e introduce este código._
+                `, m)
 
                 console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para +${folderId}:`, e);
-                // Si falla al pedir el código, forzamos la reconexión.
                 return creloadHandler(true).catch(console.error)
             }
         }
@@ -167,7 +184,6 @@ export async function ConnectAdditionalSession(options) {
                 if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
                     global.additionalConns.push(sock)
                 }
-                // Si se registró exitosamente y ya se había enviado el código, notificar la vinculación
                 if (codeSent) { 
                     await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
                     codeSent = false; 
@@ -179,15 +195,14 @@ export async function ConnectAdditionalSession(options) {
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode; 
 
-            // Razones que requieren RECONEXIÓN (conexión temporalmente perdida)
             const shouldReconnect = [
                 DisconnectReason.timedOut,    
                 DisconnectReason.connectionClosed, 
                 DisconnectReason.connectionLost, 
                 DisconnectReason.restartRequired, 
-                428, // Código de WhatsApp/Baileys para conexión rechazada temporalmente
-                500, // Error interno del servidor, generalmente reintenta
-                515, // Reintentar
+                428, 
+                500, 
+                515, 
             ].includes(reason);
 
             if (shouldReconnect) {
@@ -196,20 +211,16 @@ export async function ConnectAdditionalSession(options) {
                 return creloadHandler(true).catch(console.error)
             } 
 
-            // Razones que requieren CIERRE PERMANENTE Y ELIMINACIÓN DE DATOS (sesión inválida)
             if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405 || reason === DisconnectReason.badSession || reason === 403) {
                 console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA/INVALIDA (+${folderId}). Borrando datos.`))
 
-                // Borrar la carpeta de credenciales para evitar reintentos fallidos
                 rmdirSync(pathSubSession, { recursive: true })
 
-                const activeConnIndex = global.additionalConns.findIndex(c => c.authState.path === pathSubSession);
+                const activeConnIndex = global.additionalConns.findIndex(c => c.authState?.path === pathSubSession);
                 if (activeConnIndex !== -1) {
-                    // Remover la conexión de la lista global
                     global.additionalConns.splice(activeConnIndex, 1);
                 }
                 
-                // NOTIFICACIÓN: Ya que el socket está cerrado, usamos el 'conn' principal para notificar.
                 conn.reply(m.chat, `⚠️ La sesión ${folderId} ha sido cerrada permanentemente (Razón: ${reason}). Por favor, re-vincule si es necesario.`, m)
             }
              codeSent = false;
