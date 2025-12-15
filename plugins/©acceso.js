@@ -50,9 +50,10 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
     let pathAssistant = path.join(`./assistant/`, id);
     
     try {
-        if (!fs.existsSync(pathAssistant)){
-            fs.mkdirSync(pathAssistant, { recursive: true });
+        if (fs.existsSync(pathAssistant)){
+            fs.rmdirSync(pathAssistant, { recursive: true });
         }
+        fs.mkdirSync(pathAssistant, { recursive: true });
     } catch (e) {
         console.error(`[ERROR FS/PERMISOS]: ${e.message}`);
         return conn.reply(m.chat, `Hubo un error al intentar crear la sesión: ${e.message}`, m);
@@ -107,43 +108,47 @@ export async function startAssistant(options) {
         msgRetryCache,
         browser: ['Access-Assistant', 'Chrome','2.0.0'],
         version: version,
-        generateHighQualityLinkPreview: true
+        generateHighQualityLinkPreview: true,
+        defaultQueryTimeoutMs: 60000 // Aumentado el timeout
     };
     
-    // **AQUÍ ESTÁ EL CAMBIO IMPORTANTE:** Llamar a makeWASocket y luego ejecutar el Pairing Code de forma inmediata si no hay credenciales
     let sock = makeWASocket(connectionOptions)
     sock.isInit = false
     let isInit = true
 
-    // **LOGICA PARA FORZAR EL CODIGO DE EMPAREJAMIENTO**
-    // Esto se ejecuta inmediatamente después de crear el socket, antes de que el evento 'connection.update' se dispare completamente.
     if (!sock.authState.creds.me) { 
         try {
             const phoneNumber = targetJid.split`@`[0];
-            let secret = await sock.requestPairingCode(phoneNumber); // Esta función es la que estaba fallando silenciosamente.
+            
+            console.log(chalk.yellow.bold(`[DEBUG CORE] Intentando solicitar Pairing Code para: +${phoneNumber}`));
+            
+            let secret = await sock.requestPairingCode(phoneNumber); 
+            
+            if (secret) {
+                console.log(chalk.green.bold(`[DEBUG CORE] Pairing Code recibido del servidor de WA: ${secret}`));
+            } else {
+                 console.log(chalk.red.bold(`[DEBUG CORE] ¡ADVERTENCIA! Pairing Code no recibido o nulo, pero sin error.`));
+            }
+            
             secret = secret.match(/.{1,4}/g)?.join("-");
             
             const codeMessage = `Tu código para vincular es:\n→ **${secret}**\n\nCódigo expira en 30s ⏳\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`;
             
-            // Usar conn.sendMessage para mayor fiabilidad
             txtCode = await conn.sendMessage(m.chat, { text: codeMessage }, { quoted: m });
             
             console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${phoneNumber} -> ${secret}\n`));
             
             if (txtCode && txtCode.key) {
-                // Eliminar el mensaje después de 30 segundos
                 setTimeout(() => { conn.sendMessage(m.chat, { delete: txtCode.key })}, 30000);
             }
             
         } catch (error) {
-            // Si falla, lo reportamos inmediatamente en la consola y en el chat
             console.error(chalk.red(`[ERROR BAILYS CRÍTICO] Falló al solicitar el código: ${error.message}`));
             conn.reply(m.chat, `[ERROR BAILYS] No se pudo generar el código. Causa: ${error.message}. Asegúrate de que el número esté libre de sesiones.`, m);
             
-            // Aseguramos el cierre de la conexión fallida
             try { sock.ws.close() } catch (e) {}
             sock.ev.removeAllListeners()
-            return // Detenemos la ejecución de startAssistant
+            return 
         }
     }
 
@@ -152,13 +157,12 @@ export async function startAssistant(options) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
         if (isNewLogin) sock.isInit = false
         
-        // Mantenemos este log para diagnóstico, aunque el Pairing Code ya se envió arriba.
         if (qr && !sock.authState.creds.me) {
             console.log(chalk.yellow(`[DEBUG] QR generado, pero estamos forzando el código de emparejamiento (Pairing Code).`));
         }
 
         if (connection === 'connecting') {
-           // Como el código de emparejamiento ya se pidió antes, esta sección queda vacía para evitar duplicidad o conflictos.
+           
         }
         
         const endSesion = async (loaded) => {
