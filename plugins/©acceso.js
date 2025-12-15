@@ -16,15 +16,27 @@ let crm3 = "SBpbmZvLWRvbmFyLmpz"
 let crm4 = "IF9hdXRvcmVzcG9uZGVyLmpzIGluZm8tYm90Lmpz"
 let drm1 = ""
 let drm2 = ""
-
-     
+const res1 = await fetch('https://files.catbox.moe/dz34fo.jpg');
+const thumb3 = Buffer.from(await res1.arrayBuffer());
+    const fkontak1 = {
+      key: { fromMe: false, participant: "0@s.whatsapp.net" },
+      message: {
+        orderMessage: {
+          itemCount: 1,
+          status: 1,
+          surface: 1,
+          message: `CONECTADO CON WHATSAPP`,
+          orderTitle: "Mejor Assistant",
+          jpegThumbnail: thumb3
+        }
+      }
+    };
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const JBOptions = {}
 if (global.conns instanceof Array) console.log()
 else global.conns = []
 let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
-//if (!globalThis.db.data.settings[conn.user.jid].accessassistant) return m.reply(`Comando desactivado temporalmente.`)
 let who
 if (!args[0]) return m.reply(`*Ingrese el número de WhatsApp para vincular el Assistant.*\n\nEjemplo: ${usedPrefix + command} 521XXXXXXXXXX`)
 if (isNaN(args[0])) return m.reply(`El número ingresado no es válido.`)
@@ -35,7 +47,7 @@ let time = global.db.data.users[m.sender].Subs + 120000
 const subBots = [...new Set([...global.conns.filter((conn) => conn.user && conn.ws.socket && conn.ws.socket.readyState !== ws.CLOSED).map((conn) => conn)])]
 const subBotsCount = subBots.length
 if (subBotsCount === 21) {
-return conn.reply(m.chat, `No se han encontrado espacios para assistants disponibles. Espera a que un assistant se desconecte e intenta más tarde.`, m, racnal)
+return conn.reply(m.chat, `No se han encontrado espacios para assistants disponibles. Espera a que un assistant se desconecte e intenta más tarde.`, m)
 }
 let id = `${number}`
 let pathAssistant = path.join(`./assistant/`, id)
@@ -50,14 +62,14 @@ JBOptions.usedPrefix = usedPrefix
 JBOptions.command = command
 JBOptions.fromCommand = true
 JBOptions.targetJid = who 
-startAssistant(JBOptions) // Cambiado de JadiBot a startAssistant
+startAssistant(JBOptions)
 global.db.data.users[m.sender].Subs = new Date * 1
 } 
 handler.help = ['conectar']
 handler.tags = ['assistant']
 handler.command = ['conectar']
 export default handler 
-export async function startAssistant(options) { // Cambiado de JadiBot a startAssistant
+export async function startAssistant(options) {
 let { pathAssistant, m, conn, args, usedPrefix, command, targetJid } = options
 let txtCode, codeBot
 const pathCreds = path.join(pathAssistant, "creds.json")
@@ -97,25 +109,7 @@ if (connection === 'connecting') {
 if (!sock.authState.creds.me) {
 let secret = await sock.requestPairingCode(targetJid.split`@`[0])
 secret = secret.match(/.{1,4}/g)?.join("-")
-
-const msg = generateWAMessageFromContent(m.chat, proto.Message.fromObject({
-  interactiveMessage: {
-    body: { text: `Tu código para vincular es:\n→ ${secret}` }, 
-    footer: { text: `${dev}` },
-    nativeFlowMessage: {
-      buttons: [
-        {
-          name: 'cta_copy',
-          buttonParamsJson: JSON.stringify({
-            display_text: `「 Assistant_Access 」`,
-            copy_code: secret
-          })
-        }
-      ]
-    }
-  }
-}), { quoted: m })
-codeBot = await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
+txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ ${secret}\n\nCódigo expira en 30s ⏳`, m)
 console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${targetJid.split('@')[0]} -> ${secret}\n`))
 if (txtCode && txtCode.key) {
 setTimeout(() => { conn.sendMessage(m.sender, { delete: txtCode.key })}, 30000)
@@ -190,8 +184,8 @@ m?.chat ? await conn.sendMessage(m.chat, {text: args[1] ? `@${m.sender.split('@'
 Bienvenido @${m.sender.split('@')[0]}, a la familia de 
  Assistant_Access disfruta del servicio.
  
- ${dev}
-`, mentions: [m.sender]}, { quoted: m }) : ''
+ ${global.dev || 'Deylin'}
+`, mentions: [m.sender]}, { quoted: fkontak1 }) : ''
 }}
 setInterval(async () => {
 if (!sock.user) {
