@@ -236,10 +236,8 @@ _Dirígete a tu móvil: *Dispositivos Vinculados* > *Vincular con el número de 
         if (restatConn) {
             const oldChats = sock.chats
             try { sock.ws.close() } catch { }
-            // Corrección: Eliminamos sock.ev.removeAllListeners() que causaba el TypeError
-            sock.ev.removeAllListeners = () => sock.ev.eventNames().forEach(eventName => sock.ev.removeAllListeners(eventName))
-            try { sock.ev.removeAllListeners() } catch { } 
-            
+            sock.ev.removeAllListeners() 
+
             ({ state, saveCreds } = await useMultiFileAuthState(pathSubSession)) 
             connectionOptions.auth = { 
                 creds: state.creds, 
