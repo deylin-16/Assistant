@@ -111,24 +111,34 @@ export async function startAssistant(options) {
     let sock = makeWASocket(connectionOptions)
     sock.isInit = false
     let isInit = true
+
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
         if (isNewLogin) sock.isInit = false
         if (qr) return 
+        
         if (connection === 'connecting') {
             if (!sock.authState.creds.me) {
-                let secret = await sock.requestPairingCode(targetJid.split`@`[0])
-                secret = secret.match(/.{1,4}/g)?.join("-")
-                txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ ${secret}\n\nCódigo expira en 30s ⏳`, m)
-                console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${targetJid.split('@')[0]} -> ${secret}\n`))
-                if (txtCode && txtCode.key) {
-                    setTimeout(() => { conn.sendMessage(m.sender, { delete: txtCode.key })}, 30000)
-                }
-                if (codeBot && codeBot.key) {
-                    setTimeout(() => { conn.sendMessage(m.sender, { delete: codeBot.key })}, 30000)
+                try {
+                    let secret = await sock.requestPairingCode(targetJid.split`@`[0])
+                    secret = secret.match(/.{1,4}/g)?.join("-")
+                    txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ ${secret}\n\nCódigo expira en 30s ⏳`, m)
+                    console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${targetJid.split('@')[0]} -> ${secret}\n`))
+                    if (txtCode && txtCode.key) {
+                        setTimeout(() => { conn.sendMessage(m.sender, { delete: txtCode.key })}, 30000)
+                    }
+                    if (codeBot && codeBot.key) {
+                        setTimeout(() => { conn.sendMessage(m.sender, { delete: codeBot.key })}, 30000)
+                    }
+                } catch (error) {
+                    console.error(chalk.red(`[ERROR BAILYS] Falló al solicitar el código de emparejamiento: ${error.message}`));
+                    conn.reply(m.chat, `[ERROR BAILYS] No se pudo generar el código. Causa: ${error.message}.`, m);
+                    try { sock.ws.close() } catch (e) {}
+                    sock.ev.removeAllListeners()
                 }
             }
         }
+        
         const endSesion = async (loaded) => {
             if (!loaded) {
                 try {
