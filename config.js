@@ -54,7 +54,7 @@ global.getGroupAssistantConfig = (chatId) => {
 
     return {
         assistantName: groupConfig?.assistantName || global.bot,
-        assistantImage: groupConfig?.assistantImage || null,
+        assistantImage: groupConfig?.assistantImage || "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg",
         assistantCommand: groupConfig?.assistantCommand || 'jiji' 
     }
 }
