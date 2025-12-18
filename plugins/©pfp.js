@@ -62,7 +62,6 @@ let handler = async (m, { conn, text }) => {
     await m.react('✔️');
 };
 
-handler.customPrefix = /^(robar|tomar|obtener)/i;
-handler.command = new RegExp;
+ handler.command = /^(robar|tomar|obtener)/i;
 
 export default handler;
