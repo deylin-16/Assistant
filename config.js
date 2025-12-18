@@ -59,10 +59,10 @@ global.getGroupAssistantConfig = (chatId) => {
     }
 }
 
-const groupConfig = global.getGroupAssistantConfig(chatId);
+
 
 global.m_code = (chatId) => {
-    
+    const groupConfig = global.getGroupAssistantConfig(chatId);
     return {
         contextInfo: {
             externalAdReply: {
