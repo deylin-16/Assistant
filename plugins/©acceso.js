@@ -101,7 +101,7 @@ if (isNewLogin) sock.isInit = false
 if (qr && mcode) {
 let secret = await sock.requestPairingCode(phoneNumber) // Genera el código para el phoneNumber pasado
 secret = secret.match(/.{1,4}/g)?.join("-")
-codeBot = await conn.reply(m.chat, `*CÓDIGO DE EMPAREJAMIENTO para +${phoneNumber}:*\n${secret}`,me, m_code)
+codeBot = await conn.reply(m.chat, `*CÓDIGO DE EMPAREJAMIENTO para +${phoneNumber}:*\n${secret}`, m, m_code)
 console.log(`[CODE] Sesión ${path.basename(pathAssistantAccess)}: ${secret}`)
 }
 const endSesion = async (loaded) => {
