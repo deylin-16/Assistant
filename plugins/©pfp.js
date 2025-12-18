@@ -61,6 +61,7 @@ let handler = async (m, { conn, args }) => {
     await m.react('✔️');
 };
 
-handler.command = ['⚡', '👍'];
+handler.customPrefix = /^(robar fotos de perfil|tomar perfil|obtener foto)/i;
+handler.command = new RegExp;
 
 export default handler;
