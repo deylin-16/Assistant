@@ -1,8 +1,8 @@
 let handler = async (m, { conn, text }) => {
     if (!text) return
 
-    let extensiones = /^(foto de perfil|perfil|foto)/i
-    if (!extensiones.test(text.trim())) return
+    let validPhrases = /^(foto de perfil|perfil|foto)/i
+    if (!validPhrases.test(text.trim())) return
 
     let who
     if (m.quoted?.sender) {
@@ -10,6 +10,7 @@ let handler = async (m, { conn, text }) => {
     } else if (m.mentionedJid?.[0]) {
         who = m.mentionedJid[0]
     } else {
+        // Netegem tot el text de símbols (+, -, espais) per quedar-nos només amb els números
         let number = text.replace(/[^0-9]/g, '')
         if (number.length > 8) {
             who = number + '@s.whatsapp.net'
@@ -18,7 +19,7 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) {
         return conn.sendMessage(m.chat, {
-            text: 'Menciona a alguien, responde a un mensaje o escribe un número después de la frase.'
+            text: 'Menciona algú, respon a un missatge o escriu el número després de la frase.'
         }, {
             quoted: m
         })
@@ -44,21 +45,21 @@ let handler = async (m, { conn, text }) => {
         try {
             pp = await conn.profilePictureUrl(m.chat, 'image')
             await conn.sendMessage(m.chat, {
-                text: `*La foto de ${name} es privada, te envío la del grupo.*`
+                text: `*La foto de ${name} és privada, t'envio la del grup.*`
             }, {
                 quoted: m
             })
         } catch {
             pp = 'https://raw.githubusercontent.com/The-King-Destroy/Adiciones/main/Contenido/1745522645448.jpeg'
             await conn.sendMessage(m.chat, {
-                text: `*No encontré foto para ${name}.*`
+                text: `*No he trobat cap foto per a ${name}.*`
             }, {
                 quoted: m
             })
         }
     }
 
-    await conn.sendFile(m.chat, pp, 'profile.jpg', `*Aquí tienes la foto de perfil de ${name}*`, m)
+    await conn.sendFile(m.chat, pp, 'profile.jpg', `*Aquí tens la foto de perfil de ${name}*`, m)
     await m.react('✔️')
 }
 
