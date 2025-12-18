@@ -13,30 +13,31 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     let _package = JSON.parse(await fs.promises.readFile(path.join(__dirname, '../package.json')).catch(_ => '{}')) || {}
 
     let customCommands = `
-*• GRUPOS*
+*• GROUPS*
 ◦ \`jiji cierra\` (Cierra el grupo)
 ◦ \`jiji abre\` (Abre el grupo)
 ◦ \`jiji renombrar a\` (Cambia nombre)
 
-*• UTILIDADES*
+*• UTILITIES*
 ◦ \`jiji elimina\` (@tag)
 ◦ \`jiji menciona a todos\`
 
-*• EXTRACCIÓN DE CONTENIDO*
+*• CONTENT EXTRACTION*
 ◦ \`play/🎧\` (Nombre del vídeo de YouTube)
 ◦ \`Descarga\` (Link Facebook/Tiktok/instagram)
+
+*• FUNCTION*
 `;
 
-    let caption = `*HOLA SOY ${assistantName.toUpperCase()}* 
+    let caption = `*HELLO I AM ${assistantName.toUpperCase()}* 
 
-*— Estado:* ${isSub ? '*Sub-Asistente*' : '*Asistente Principal*'}
-*— Versión:* ${_package.version}
-*— Creador:* ${ownerBot[0].name}
+*— Version:* ${_package.version}
+*— Creator:* ${ownerBot[0].name}
 *— Runtime:* ${msToDate(process.uptime() * 1000)}
 
 *NOTE:* _assistant without prefix._
 
-*— COMANDOS —*
+*— COMMANDS —*
 ${customCommands}`
     
     let pp = assistantImage
