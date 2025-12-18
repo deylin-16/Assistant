@@ -1,4 +1,9 @@
 let handler = async (m, { conn, text }) => {
+    let validPhrases = /^(foto de perfil|perfil|foto)$/i;
+    let input = text ? text.trim().toLowerCase() : '';
+    
+    if (!validPhrases.test(input)) return;
+
     let who;
     if (m.quoted?.sender) {
         who = m.quoted.sender;
@@ -13,7 +18,7 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) {
         return conn.sendMessage(m.chat, {
-            text: 'Menciona a alguien o responde a un mensaje para obtener su foto de perfil.'
+            text: 'Menciona a alguien o responde a un mensaje para obtener la foto.'
         }, {
             quoted: m
         });
@@ -39,14 +44,14 @@ let handler = async (m, { conn, text }) => {
         try {
             pp = await conn.profilePictureUrl(m.chat, 'image');
             await conn.sendMessage(m.chat, {
-                text: `*El usuario tiene su foto privada, aquí tienes la del grupo.*`
+                text: `*Foto privada, se muestra la del grupo.*`
             }, {
                 quoted: m
             });
         } catch {
             pp = 'https://raw.githubusercontent.com/The-King-Destroy/Adiciones/main/Contenido/1745522645448.jpeg';
             await conn.sendMessage(m.chat, {
-                text: `*No se pudo encontrar ninguna foto de perfil.*`
+                text: `*No se encontró foto.*`
             }, {
                 quoted: m
             });
@@ -57,8 +62,7 @@ let handler = async (m, { conn, text }) => {
     await m.react('✔️');
 };
 
-
-handler.customPrefix = /^(robar|tomar|obtener)\s+(foto de perfil|perfil|foto)/i;
+handler.customPrefix = /^(robar|tomar|obtener)/i;
 handler.command = new RegExp;
 
 export default handler;
