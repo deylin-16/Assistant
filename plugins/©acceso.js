@@ -45,13 +45,12 @@ assistant_accessJBOptions.args = args
 assistant_accessJBOptions.usedPrefix = usedPrefix
 assistant_accessJBOptions.command = command
 assistant_accessJBOptions.fromCommand = true
-assistant_accessJBOptions.phoneNumber = phoneNumber // Pasar el número para la generación del código
+assistant_accessJBOptions.phoneNumber = phoneNumber 
 assistant_accessJadiBot(assistant_accessJBOptions)
 global.db.data.users[m.sender].Subs = new Date * 1
 }
-handler.help = ['code']
-handler.tags = ['serbot']
-handler.command = ['code']
+ñ
+handler.command = ['conectar_assistant', 'conectar']
 export default handler 
 
 export async function assistant_accessJadiBot(options) {
