@@ -2,7 +2,7 @@ import fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
-const respuestasPath = path.join(process.cwd(), 'plugins/respuestas.json');
+const respuestasPath = path.join(process.cwd(), '../db/artificial_intelligence_simulation_responses.json');
 let respuestasPredefinidas = {};
 
 if (fs.existsSync(respuestasPath)) {
