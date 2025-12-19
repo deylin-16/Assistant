@@ -24,8 +24,7 @@ handler.all = async function (m, chatUpdate) {
 
     let rawText = m.text
     let queryLower = rawText.toLowerCase().trim()
-    let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
-
+    
     let isOrBot = /(jiji|gato|asistente)/i.test(rawText)
     let isReply = m.quoted && m.quoted.sender === conn.user.jid
     let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
@@ -35,6 +34,8 @@ handler.all = async function (m, chatUpdate) {
     let { key } = await conn.sendMessage(m.chat, { text: '✍️...' }, { quoted: m })
     await conn.sendPresenceUpdate('composing', m.chat)
 
+    let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
+
     if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
         let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -42,13 +43,14 @@ handler.all = async function (m, chatUpdate) {
         return true 
     }
 
-    if (prefixRegex.test(rawText)) return true
+    let prefixRegex = new RegExp('^[' + (opts?.prefix || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
+    if (prefixRegex.test(rawText)) {
+        await conn.sendMessage(m.chat, { text: '⚙️', edit: key }) 
+        return true
+    }
 
     if (DIRECT_COMMAND_REGEX.test(queryLower)) {
-        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) {
-             //await conn.sendMessage(m.chat, { text: '⚙️ Comando de admin detectado.', edit: key })
-             return true
-        }
+        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) return true
     }
 
     let assistantName = m.isGroup && typeof global.getGroupAssistantConfig === 'function' 
@@ -68,14 +70,14 @@ handler.all = async function (m, chatUpdate) {
             let fullText = result.trim()
             let words = fullText.split(' ')
             
-            let step = 4; 
+            let step = 5; 
             let speed = 300; 
 
             if (fullText.length > 500) {
-                step = 12; 
-                speed = 400;
+                step = 15; 
+                speed = 450;
             } else if (fullText.length > 200) {
-                step = 8;
+                step = 10;
                 speed = 350;
             }
 
@@ -92,7 +94,7 @@ handler.all = async function (m, chatUpdate) {
         }
     } catch (e) {
         console.error(e)
-        await conn.sendMessage(m.chat, { text: '💢 Algo salió mal en mi cabeza.', edit: key })
+        await conn.sendMessage(m.chat, { text: '💢 Error de conexión.', edit: key })
     }
     return true
 }
