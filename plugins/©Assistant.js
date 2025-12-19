@@ -30,9 +30,9 @@ handler.all = async function (m, { conn }) {
 
     if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
         let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
-        await this.sendPresenceUpdate('composing', m.chat)
+        await conn.sendPresenceUpdate('composing', m.chat)
         await new Promise(resolve => setTimeout(resolve, 800))
-        await this.reply(m.chat, txt, m)
+        await conn.reply(m.chat, txt, m)
         return true 
     }
 
@@ -40,8 +40,8 @@ handler.all = async function (m, { conn }) {
     if (prefixRegex.test(rawText)) return true
 
     let isOrBot = /(jiji.|gato|asistente)/i.test(rawText)
-    let isReply = m.quoted && m.quoted.sender === this.user.jid
-    let isMention = m.mentionedJid && m.mentionedJid.includes(this.user.jid) 
+    let isReply = m.quoted && m.quoted.sender === conn.user.jid
+    let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
     if (!(isOrBot || isReply || isMention)) return
 
@@ -49,7 +49,7 @@ handler.all = async function (m, { conn }) {
         if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) return true
     }
 
-    await this.sendPresenceUpdate('composing', m.chat)
+    await conn.sendPresenceUpdate('composing', m.chat)
 
     let assistantName = m.isGroup && typeof global.getGroupAssistantConfig === 'function' 
         ? global.getGroupAssistantConfig(m.chat).assistantName 
@@ -76,13 +76,13 @@ handler.all = async function (m, { conn }) {
                 
                 if (i % 3 === 0 || i === words.length - 1) {
                     await conn.sendMessage(m.chat, { text: currentText.trim(), edit: key })
-                    await new Promise(resolve => setTimeout(resolve, 150))
+                    await new Promise(resolve => setTimeout(resolve, 200))
                 }
             }
         }
     } catch (e) {
         console.error(e)
-        await this.reply(m.chat, '⚠️ Fallo en la conexión cerebral.', m)
+        await conn.reply(m.chat, '⚠️ Fallo en la conexión cerebral.', m)
     }
     return true
 }
