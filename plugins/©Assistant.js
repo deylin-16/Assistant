@@ -21,15 +21,15 @@ handler.all = async function (m, { conn }) {
     if (!chat || chat.isBanned || !chat.autoresponder) return
     if (m.isBot || m.fromMe || !m.text) return 
 
-    let rawText = m.text
-    let queryLower = rawText.toLowerCase().trim()
-    let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
-
-    let isOrBot = /(jiji|gato|asistente)/i.test(rawText)
-    let isReply = m.quoted && m.quoted.sender === conn.user.jid
-    let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
+    const botJid = conn.user.jid
+    const isOrBot = /(jiji|gato|asistente)/i.test(m.text)
+    const isReply = m.quoted && m.quoted.sender === botJid
+    const isMention = m.mentionedJid && m.mentionedJid.includes(botJid) 
 
     if (!(isOrBot || isReply || isMention)) return
+
+    let queryLower = m.text.toLowerCase().trim()
+    let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
 
     if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
         let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
@@ -50,7 +50,7 @@ handler.all = async function (m, { conn }) {
         : (global.bot || 'Asistente');
 
     let username = m.pushName || 'Usuario'
-    let jijiPrompt = `Eres ${assistantName}. Tu personalidad: Sarcástico, enojón, directo, divertido pero furioso, demuestras poder y adorable. Responde a ${username}: ${rawText}. Usa * para resaltar.`;
+    let jijiPrompt = `Eres ${assistantName}. Tu personalidad: Sarcástico, enojón, directo, divertido pero furioso, demuestras poder y adorable. Responde a ${username}: ${m.text}. Usa * para resaltar.`;
 
     try {
         const url = `${POLLINATIONS_BASE_URL}/${encodeURIComponent(jijiPrompt)}?model=openai&cache=true`;
@@ -60,12 +60,12 @@ handler.all = async function (m, { conn }) {
 
         if (result && result.trim().length > 0) {
             await conn.sendMessage(m.chat, { text: 'Escribiendo...', edit: key })
-            await new Promise(resolve => setTimeout(resolve, 2000))
+            await new Promise(resolve => setTimeout(resolve, 1500))
 
             let fullText = result.trim()
             let words = fullText.split(' ')
-            let step = fullText.length > 500 ? 30 : (fullText.length > 200 ? 18 : 10);
-            let speed = 1000; 
+            let step = fullText.length > 500 ? 35 : (fullText.length > 200 ? 20 : 12);
+            let speed = 1100; 
 
             let currentText = ''
             for (let i = 0; i < words.length; i += step) {
@@ -77,8 +77,8 @@ handler.all = async function (m, { conn }) {
             await conn.sendMessage(m.chat, { text: fullText, edit: key })
         }
     } catch (e) {
-        console.error(e)
-        await conn.sendMessage(m.chat, { text: '💢 Error en la matriz.', edit: key })
+        console.error('Error en Asistente:', e)
+        await conn.sendMessage(m.chat, { text: '💢 Error temporal.', edit: key })
     }
     return true
 }
