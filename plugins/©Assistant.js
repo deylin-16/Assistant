@@ -15,13 +15,11 @@ const DIRECT_COMMAND_REGEX = new RegExp(`^(jiji|gato|asistente)\\s+(${ACTION_KEY
 
 let handler = m => m
 
-handler.all = async function (m, { conn }) {
+handler.all = async function (m, chatUpdate) {
+    const conn = this;
     let chat = global.db.data.chats[m.chat]
     if (!chat || chat.isBanned || !chat.autoresponder) return
 
-    m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 
-            || m.id.startsWith('3EB0') && (m.id.length === 12 || m.id.length === 20 || m.id.length === 22) 
-            || m.id.startsWith('B24E') && m.id.length === 20
     if (m.isBot || m.fromMe) return 
 
     let rawText = m.text || ''
@@ -74,9 +72,9 @@ handler.all = async function (m, { conn }) {
             for (let i = 0; i < words.length; i++) {
                 currentText += words[i] + ' '
                 
-                if (i % 3 === 0 || i === words.length - 1) {
+                if (i % 4 === 0 || i === words.length - 1) {
                     await conn.sendMessage(m.chat, { text: currentText.trim(), edit: key })
-                    await new Promise(resolve => setTimeout(resolve, 200))
+                    await new Promise(resolve => setTimeout(resolve, 250))
                 }
             }
         }
