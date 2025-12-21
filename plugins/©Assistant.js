@@ -58,8 +58,7 @@ handler.all = async function (m) {
 
         if (result && result.trim().length > 0) {
             await conn.sendMessage(m.chat, { text: 'Escribiendo...', edit: key })
-            await new Promise(resolve => setTimeout(resolve, 1200))
-
+            
             let fullText = result.trim()
             let words = fullText.split(' ')
             let step = fullText.length > 500 ? 25 : (fullText.length > 200 ? 12 : 6);
@@ -67,6 +66,7 @@ handler.all = async function (m) {
 
             let currentText = ''
             for (let i = 0; i < words.length; i += step) {
+                await conn.sendPresenceUpdate('composing', m.chat)
                 currentText = words.slice(0, i + step).join(' ')
                 await conn.sendMessage(m.chat, { text: currentText.trim(), edit: key })
                 await new Promise(resolve => setTimeout(resolve, speed))
