@@ -13,14 +13,14 @@
 },
 "repository": {
 "type": "git",
-"url": "git+https://github.com/deylin-16/Kirito-bot-MD.git"
+"url": "git+https://github.com/deylin-16/Assistant.git"
 },  
 "author": "Dey",
 "license": "MIT-License",
 "bugs": {
-"url": "https://github.com/deylin-16/Kirito-bot-MD/issues"
+"url": "https://github.com/deylin-16/Assistant/issues"
 },
-"homepage": "https://github.com/deylin-16/Kirito-bot-MD#readme",
+"homepage": "https://github.com/deylin-16/Assistant#readme",
 "dependencies": {
 "@hapi/boom": "^10.0.1",
 "@vitalets/google-translate-api": "^8.0.0",
