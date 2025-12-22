@@ -62,22 +62,7 @@ global.getAssistantConfig = (botJid) => {
     }
 }
 
-global.m_code = (botJid) => {
-    const config = global.getAssistantConfig(botJid);
-    return {
-        contextInfo: {
-            externalAdReply: {
-                title: `Código de emparejamiento`,
-                body: `Asistente: ${config.assistantName}`,
-                mediaType: 1,
-                previewType: 'PHOTO',
-                renderLargerThumbnail: true, 
-                thumbnailUrl: config.assistantImage,
-                sourceUrl: 'https://www.deylin.xyz' 
-            }
-        }
-    };
-};
+
 
 let file = fileURLToPath(import.meta.url)
 watchFile(file, () => {
