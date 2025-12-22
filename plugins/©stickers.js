@@ -61,6 +61,8 @@ const makeImageWithText = async (buffer, text, color) => {
 
 let handler = async (m, { conn, args }) => {
   try {
+    global.getAssistantConfig(conn.user.jid)
+    
     let txt = args.join(' ').trim()
     let q = m.quoted ? m.quoted : m
     let mime = (q.msg || q).mimetype || q.mediaType || ''
@@ -100,7 +102,6 @@ let handler = async (m, { conn, args }) => {
     await conn.reply(m.chat, `⚠️ Error al crear el sticker:\n${e.message}`, m)
   }
 }
-
 
 handler.command = ['s', 'sticker']
 
