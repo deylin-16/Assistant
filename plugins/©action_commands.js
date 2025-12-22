@@ -12,37 +12,36 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     let _package = JSON.parse(await fs.promises.readFile(path.join(__dirname, '../package.json')).catch(_ => '{}')) || {}
 
-    let customCommands = `
-*• GROUPS*
-◦ \`jiji cierra\` (Close the group)
-◦ \`jiji abre\` (Open the group)
-◦ \`jiji renombrar a\` (Change name)
+        let customCommands = `
+*• GRUPOS*
+◦ \`jiji cierra\` (Cerrar el grupo)
+◦ \`jiji abre\` (Abrir el grupo)
+◦ \`jiji renombrar a\` (Cambiar nombre)
 
-*• UTILITIES*
+*• UTILIDADES*
 ◦ \`jiji elimina\` (@tag)
 ◦ \`jiji menciona a todos\`
 
-*• CONTENT EXTRACTION*
-◦ \`play/🎧\` (YouTube video title)
-◦ \`Descarga\` (Link Facebook/Tiktok/instagram)
+*• EXTRACCIÓN DE CONTENIDO*
+◦ \`play/🎧\` (Título de video de YouTube)
+◦ \`Descarga\` (Enlace de Facebook/Tiktok/Instagram)
 
-*• FUNCTION*
-◦ \`robar perfil/tomar perfil\` (@user/number)
+*• FUNCIONES*
+◦ \`robar perfil/tomar perfil\` (@usuario/número)
 
-*• SPY FUNCTION*
-◦ \`👁️‍🗨️/👁️/:)\` (steal photos/videos/audios from a single view)
+*• FUNCIÓN ESPÍA*
+◦ \`👁️‍🗨️/👁️/:)\` (Robar fotos/videos/audios de una sola vista)
 `;
 
-    let caption = `*HELLO I AM ${assistantName.toUpperCase()}* 
+    let caption = `*HOLA, SOY ${assistantName.toUpperCase()}* *— Versión:* ${_package.version}
+*— Creador:* ${ownerBot[0].name}
+*— Tiempo activo:* ${msToDate(process.uptime() * 1000)}
 
-*— Version:* ${_package.version}
-*— Creator:* ${ownerBot[0].name}
-*— Runtime:* ${msToDate(process.uptime() * 1000)}
+*NOTA:* _asistente sin prefijo._
 
-*NOTE:* _assistant without prefix._
-
-*— COMMANDS —*
+*— COMANDOS —*
 ${customCommands}`
+
 
     try {
         let sendImage = typeof assistantImage === 'string' ? { url: assistantImage } : assistantImage
