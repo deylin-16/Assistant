@@ -37,27 +37,30 @@ let Names = [
 let randomIndex = Math.floor(Math.random() * Names.length);
 global.bot = Names[randomIndex];
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.join(__dirname, 'db/group_configs.json')
 
-global.getGroupAssistantConfig = (chatId) => {
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DB_PATH = path.join(__dirname, 'db/assistant_sessions.json')
+
+global.getAssistantConfig = (botJid) => {
     let configs = {}
     try {
         if (fs.existsSync(DB_PATH)) {
             configs = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
         }
     } catch (e) {
-        console.error("Error al leer group_configs.json:", e)
+        console.error("Error al leer assistant_sessions.json:", e)
     }
 
-    const groupConfig = configs[chatId]
+    const sessionConfig = configs[botJid]
 
     return {
-        assistantName: groupConfig?.assistantName || global.bot,
-        assistantImage: groupConfig?.assistantImage || "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg",
-        assistantCommand: groupConfig?.assistantCommand || 'jiji' 
+        assistantName: sessionConfig?.assistantName || global.bot || "Asistente",
+        assistantImage: sessionConfig?.assistantImage 
+            ? Buffer.from(sessionConfig.assistantImage, 'base64') 
+            : "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg"
     }
 }
+
 
 
 
