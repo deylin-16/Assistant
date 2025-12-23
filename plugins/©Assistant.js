@@ -10,8 +10,6 @@ if (fs.existsSync(respuestasPath)) {
 }
 
 const DEYLIN_API_URL = 'https://www.deylin.xyz/api/ai/text/ai';
-const ACTION_KEYWORDS = ['cierra', 'cerrar', 'bloquea', 'ciérralo', 'silencia', 'modo-admin', 'abre', 'abrir', 'desbloquea', 'ábrelo', 'quita modo-admin', 'cambia el nombre', 'renombrar', 'ponle nombre', 'nuevo nombre', 'actualiza nombre', 'cambia la descripción', 'pon descripción', 'nueva descripción', 'descr', 'cambia la foto', 'pon foto', 'cambiar imagen', 'elimina', 'sacar', 'kickea', 'expulsa', 'saca', 'fuera', 'menciona todos', 'tagall', 'menciónalos', 'aviso a todos'];
-const DIRECT_COMMAND_REGEX = new RegExp(`^(jiji|gato|asistente)\\s+(${ACTION_KEYWORDS.join('|')})`, 'i');
 
 let handler = m => m
 
@@ -20,7 +18,9 @@ handler.all = async function (m) {
     if (!m.text) return
 
     let chat = global.db.data?.chats?.[m.chat]
-    if (chat?.isBanned) return
+    
+    if (!chat || chat.isBanned || !chat.autoresponder) return
+    if (m.fromMe) return
 
     const botJid = conn.user.jid
     const isOrBot = /(jiji|gato|asistente)/i.test(m.text)
@@ -39,14 +39,9 @@ handler.all = async function (m) {
         return true 
     }
 
-    if (DIRECT_COMMAND_REGEX.test(queryLower)) {
-        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) return true
-    }
-
     let { key } = await conn.sendMessage(m.chat, { text: 'Pensando...' }, { quoted: m })
     await conn.sendPresenceUpdate('composing', m.chat)
     global.getAssistantConfig(conn.user.jid)
-
 
     let assistantName = (global.name || 'Asistente');
     let username = m.pushName || 'Usuario'
@@ -61,7 +56,6 @@ Si ${username} te insulta o te falta al respeto, responde con la misma agresivid
 
 Responde a ${username}: ${m.text}`;
 
-
     try {
         const url = `${DEYLIN_API_URL}?prompt=${encodeURIComponent(jijiPrompt)}&id=uwuw`;
         const res = await fetch(url)
@@ -69,8 +63,6 @@ Responde a ${username}: ${m.text}`;
         let result = json.response 
 
         if (result && result.trim().length > 0) {
-            //await conn.sendMessage(m.chat, { text: 'Escribiendo...', edit: key })
-            
             let fullText = result.trim()
             let words = fullText.split(' ')
             let step = fullText.length > 500 ? 25 : (fullText.length > 200 ? 12 : 6);
