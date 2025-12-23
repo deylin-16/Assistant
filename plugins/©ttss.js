@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { TikTokDL } from '@tobyg74/tiktok-api-dl';
 
 const emoji = '🎥';
 
@@ -16,31 +15,39 @@ let handler = async (m, { conn, text }) => {
   try {
     await m.react(rwait);
     
-    const searchResults = await TikTokDL(text, { type: 'search' });
+    const { data: response } = await axios.get(`https://www.tikwm.com/api/feed/search?keywords=${encodeURIComponent(text)}`);
 
-    if (!searchResults.result || searchResults.result.length === 0) {
+    if (!response.data || !response.data.videos || response.data.videos.length === 0) {
       await m.react('❌');
       return conn.reply(m.chat, `No se encontraron resultados para "${text}".`, m);
     }
 
-    const videoUrl = searchResults.result[0].videoUrl; 
-    const downloadApi = `https://www.deylin.xyz/api/download/tiktok?url=${encodeURIComponent(videoUrl)}&apikey=by_deylin`;
-    const { data: dlData } = await axios.get(downloadApi);
+    const video = response.data.videos[0];
+    const videoUrl = `https://www.tiktok.com/@${video.author.unique_id}/video/${video.video_id}`;
 
-    if (!dlData.success) {
-      await m.react('❌');
-      return conn.reply(m.chat, `Error al procesar el video.`, m);
+    const { data: dlData } = await axios.get(`https://www.deylin.xyz/api/download/tiktok?url=${encodeURIComponent(videoUrl)}&apikey=by_deylin`);
+
+    let finalVideo, finalTitle, finalAuthor;
+
+    if (dlData.success) {
+      finalVideo = dlData.video_url;
+      finalTitle = dlData.title;
+      finalAuthor = dlData.author || dlData.autor;
+    } else {
+      finalVideo = video.play;
+      finalTitle = video.title;
+      finalAuthor = video.author.nickname;
     }
 
     const caption = `
 ${emoji} *TIKTOK SEARCH*
-📝 *Título:* ${dlData.title || 'Sin título'}
-👤 *Autor:* ${dlData.author || dlData.autor}
+📝 *Título:* ${finalTitle || 'Sin título'}
+👤 *Autor:* ${finalAuthor}
 🔗 *Link:* ${videoUrl}
 `.trim();
 
     await conn.sendMessage(m.chat, { 
-      video: { url: dlData.video_url }, 
+      video: { url: finalVideo }, 
       caption: caption,
       mimetype: 'video/mp4'
     }, { quoted: fkontak });
