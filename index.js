@@ -174,12 +174,20 @@ if (!existsSync(`./${sessions}/creds.json`)) {
       if (!!phoneNumber) {
         addNumber = phoneNumber.replace(/[^0-9]/g, '');
       } else {
-        do {
-          phoneNumber = await question(consoleInfo(`[ INPUT ] Ingrese el número de WhatsApp para conectar (Ej: +505 7631 5903):\n> `));
-          phoneNumber = phoneNumber.replace(/\D/g, '');
-        } while (!await isValidPhoneNumber(phoneNumber));
+        while (true) {
+          phoneNumber = await question(consoleInfo(`[ INPUT ] Ingrese el número de WhatsApp para conectar (Ej: +504 8819 8573):\n> `));
+          let cleanNumber = phoneNumber.replace(/\s+/g, '').replace(/-/g, '');
+          if (!cleanNumber.startsWith('+')) {
+            cleanNumber = `+${cleanNumber}`;
+          }
+          if (await isValidPhoneNumber(cleanNumber)) {
+            addNumber = cleanNumber.replace(/\D/g, '');
+            break;
+          } else {
+            console.log(consoleError(":: ERROR :: Número inválido."));
+          }
+        }
         rl.close();
-        addNumber = phoneNumber.replace(/\D/g, '');
         setTimeout(async () => {
           let codeBot = await conn.requestPairingCode(addNumber);
           codeBot = codeBot?.match(/.{1,4}/g)?.join("-") || codeBot;
@@ -194,135 +202,41 @@ if (!existsSync(`./${sessions}/creds.json`)) {
 
 conn.isInit = false;
 conn.well = false;
-console.log(consoleSuccess(`:: ESTADO :: Conexión lista para handler. ${chalk.bold.hex('#1E90FF')(`(v${version.join('.')})`)}\n`));
 
 if (!opts['test']) {
   if (global.db) setInterval(async () => {
     if (global.db.data) await global.db.write();
-    if (opts['autocleartmp'] && (global.support || {}).find) (tmp = [tmpdir(), 'tmp', `${jadi}`], tmp.forEach((filename) => spawn('find', [filename, '-amin', '3', '-type', 'f', '-delete'])));
   }, 30 * 1000);
 }
 
 async function resolveLidToRealJid(lidJid, groupJid, maxRetries = 3, retryDelay = 1000) {
   if (!lidJid?.endsWith("@lid") || !groupJid?.endsWith("@g.us")) return lidJid?.includes("@") ? lidJid : `${lidJid}@s.whatsapp.net`;
-  const cached = lidCache.get(lidJid);
-  if (cached) return cached;
   const lidToFind = lidJid.split("@")[0];
   let attempts = 0;
   while (attempts < maxRetries) {
     try {
       const metadata = await conn.groupMetadata(groupJid);
-      if (!metadata?.participants) throw new Error("No se obtuvieron participantes");
       for (const participant of metadata.participants) {
-        try {
-          if (!participant?.jid) continue;
-          const contactDetails = await conn.onWhatsApp(participant.jid);
-          if (!contactDetails?.[0]?.lid) continue;
-          const possibleLid = contactDetails[0].lid.split("@")[0];
-          if (possibleLid === lidToFind) {
-            lidCache.set(lidJid, participant.jid);
-            return participant.jid;
-          }
-        } catch (e) {
-          continue;
-        }
+        const contactDetails = await conn.onWhatsApp(participant.jid);
+        if (contactDetails?.[0]?.lid?.split("@")[0] === lidToFind) return participant.jid;
       }
-      lidCache.set(lidJid, lidJid);
-      return lidJid;
     } catch (e) {
       attempts++;
-      if (attempts >= maxRetries) {
-        lidCache.set(lidJid, lidJid);
-        return lidJid;
-      }
       await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   }
   return lidJid;
 }
 
-async function extractAndProcessLids(text, groupJid) {
-  if (!text) return text;
-  const lidMatches = text.match(/\d+@lid/g) || [];
-  let processedText = text;
-  for (const lid of lidMatches) {
-    try {
-      const realJid = await resolveLidToRealJid(lid, groupJid);
-      processedText = processedText.replace(new RegExp(lid, 'g'), realJid);
-    } catch (e) {
-      console.error(`Error procesando LID ${lid}:`, e);
-    }
-  }
-  return processedText;
-}
-
-async function processLidsInMessage(message, groupJid) {
-  if (!message || !message.key) return message;
-  try {
-    const messageCopy = {
-      key: { ...message.key },
-      message: message.message ? { ...message.message } : undefined,
-      ...(message.quoted && { quoted: { ...message.quoted } }),
-      ...(message.mentionedJid && { mentionedJid: [...message.mentionedJid] })
-    };
-    const remoteJid = messageCopy.key.remoteJid || groupJid;
-    if (messageCopy.key?.participant?.endsWith('@lid')) {
-      messageCopy.key.participant = await resolveLidToRealJid(messageCopy.key.participant, remoteJid);
-    }
-    if (messageCopy.message?.extendedTextMessage?.contextInfo?.participant?.endsWith('@lid')) {
-      messageCopy.message.extendedTextMessage.contextInfo.participant = await resolveLidToRealJid(messageCopy.message.extendedTextMessage.contextInfo.participant, remoteJid);
-    }
-    if (messageCopy.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
-      const mentionedJid = messageCopy.message.extendedTextMessage.contextInfo.mentionedJid;
-      if (Array.isArray(mentionedJid)) {
-        for (let i = 0; i < mentionedJid.length; i++) {
-          if (mentionedJid[i]?.endsWith('@lid')) {
-            mentionedJid[i] = await resolveLidToRealJid(mentionedJid[i], remoteJid);
-          }
-        }
-      }
-    }
-    if (messageCopy.message?.conversation) {
-      messageCopy.message.conversation = await extractAndProcessLids(messageCopy.message.conversation, remoteJid);
-    }
-    if (messageCopy.message?.extendedTextMessage?.text) {
-      messageCopy.message.extendedTextMessage.text = await extractAndProcessLids(messageCopy.message.extendedTextMessage.text, remoteJid);
-    }
-    return messageCopy;
-  } catch (e) {
-    console.error('Error en processLidsInMessage:', e);
-    return message;
-  }
-}
-
 async function connectionUpdate(update) {
   const { connection, lastDisconnect, isNewLogin } = update;
   global.stopped = connection;
   if (isNewLogin) conn.isInit = true;
-  const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode;
-  if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
-    await global.reloadHandler(true).catch(console.error);
-    global.timestamp.connect = new Date;
-  }
-  if (global.db.data == null) loadDatabase();
   if (connection === "open") {
-    const userJid = jidNormalizedUser(conn.user.id);
-    const userName = conn.user.name || conn.user.verifiedName || "Desconocido";
-    console.log(consoleSuccess(`\n:: CONEXIÓN ESTABLECIDA ::`));
-    console.log(consoleSuccess(`> Bot: ${userName}`));
-    console.log(consoleSuccess(`> ID: ${userJid.split('@')[0]}\n`));
+    console.log(consoleSuccess(`\n:: CONEXIÓN ESTABLECIDA ::\n> Bot: ${conn.user.name}\n`));
   }
-  let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
   if (connection === 'close') {
-    if (reason === DisconnectReason.badSession) {
-      console.log(consoleError(`:: ERROR :: Sesión corrupta.`));
-    } else if (reason === DisconnectReason.connectionClosed || reason === DisconnectReason.connectionLost) {
-      await global.reloadHandler(true).catch(console.error);
-    } else if (reason === DisconnectReason.loggedOut) {
-      await global.reloadHandler(true).catch(console.error);
-    } else {
-      await global.reloadHandler(true).catch(console.error);
-    }
+    await global.reloadHandler(true).catch(console.error);
   }
 }
 
@@ -338,17 +252,10 @@ global.reloadHandler = async function(restatConn) {
   }
   if (restatConn) {
     const oldChats = global.conn.chats;
-    try {
-      global.conn.ws.close();
-    } catch {}
+    try { global.conn.ws.close(); } catch {}
     conn.ev.removeAllListeners();
     global.conn = makeWASocket(connectionOptions, { chats: oldChats });
     isInit = true;
-  }
-  if (!isInit) {
-    conn.ev.off('messages.upsert', conn.handler);
-    conn.ev.off('connection.update', conn.connectionUpdate);
-    conn.ev.off('creds.update', conn.credsUpdate);
   }
   conn.handler = handler.handler.bind(global.conn);
   conn.connectionUpdate = connectionUpdate.bind(global.conn);
@@ -360,29 +267,7 @@ global.reloadHandler = async function(restatConn) {
   return true;
 };
 
-setInterval(() => {
-  process.exit(0);
-}, 10800000);
-
-let rtU = join(__dirname, `./${jadi}`);
-if (!existsSync(rtU)) {
-  mkdirSync(rtU, { recursive: true });
-}
-
-global.rutaJadiBot = join(__dirname, `./${jadi}`);
-if (global.Jadibts) {
-  const readRutaJadiBot = readdirSync(rutaJadiBot);
-  if (readRutaJadiBot.length > 0) {
-    const creds = 'creds.json';
-    for (const gjbts of readRutaJadiBot) {
-      const botPath = join(rutaJadiBot, gjbts);
-      const readBotPath = readdirSync(botPath);
-      if (readBotPath.includes(creds)) {
-        assistant_accessJadiBot({ pathAssistantAccess: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' });
-      }
-    }
-  }
-}
+setInterval(() => { process.exit(0); }, 10800000);
 
 const pluginFolder = join(__dirname, './plugins');
 const pluginFilter = (filename) => /\.js$/.test(filename);
@@ -392,106 +277,45 @@ async function readRecursive(folder) {
   for (const filename of readdirSync(folder)) {
     const file = join(folder, filename);
     const stats = statSync(file);
-    if (stats.isDirectory()) {
-      await readRecursive(file);
-    } else if (pluginFilter(filename)) {
-      try {
-        const pluginPath = file.replace(pluginFolder + '/', '');
-        const module = await import(global.__filename(file));
-        global.plugins[pluginPath] = module.default || module;
-      } catch (e) {
-        delete global.plugins[filename];
-      }
+    if (stats.isDirectory()) await readRecursive(file);
+    else if (pluginFilter(filename)) {
+      const module = await import(global.__filename(file));
+      global.plugins[file.replace(pluginFolder + '/', '')] = module.default || module;
     }
   }
 }
 
-async function filesInit() {
-  await readRecursive(pluginFolder);
-}
-filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
+readRecursive(pluginFolder).catch(console.error);
 
 global.reload = async (_ev, filename) => {
-  const pluginPath = filename.replace(pluginFolder + '/', '');
   if (pluginFilter(filename)) {
     const dir = global.__filename(join(pluginFolder, filename), true);
-    if (pluginPath in global.plugins) {
-      if (!existsSync(dir)) return delete global.plugins[pluginPath];
-    }
-    const err = syntaxerror(readFileSync(dir), filename, {
-      sourceType: 'module',
-      allowAwaitOutsideFunction: true,
-    });
-    if (!err) {
-      try {
-        const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
-        global.plugins[pluginPath] = module.default || module;
-      } catch (e) {
-      } finally {
-        global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
-      }
-    }
+    const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
+    global.plugins[filename.replace(pluginFolder + '/', '')] = module.default || module;
   }
 };
 
-Object.freeze(global.reload);
 watch(pluginFolder, { recursive: true }, global.reload);
 await global.reloadHandler();
 
 async function _quickTest() {
-  const test = await Promise.all([
-    spawn('ffmpeg'),
-    spawn('ffprobe'),
-    spawn('find', ['--version']),
-  ].map((p) => {
+  const test = await Promise.all([spawn('ffmpeg'), spawn('ffprobe')].map((p) => {
     return Promise.race([
-      new Promise((resolve) => {
-        p.on('close', (code) => resolve(code !== 127));
-      }),
-      new Promise((resolve) => {
-        p.on('error', (_) => resolve(false));
-      })
+      new Promise((resolve) => { p.on('close', (code) => resolve(code !== 127)); }),
+      new Promise((resolve) => { p.on('error', (_) => resolve(false)); })
     ]);
   }));
-  const [ffmpeg, ffprobe, find] = test;
-  global.support = { ffmpeg, ffprobe, find };
-  Object.freeze(global.support);
-}
-
-function clearTmp() {
-  const tmpDir = join(__dirname, 'tmp');
-  if (existsSync(tmpDir)) {
-    const filenames = readdirSync(tmpDir);
-    filenames.forEach(file => {
-      unlinkSync(join(tmpDir, file));
-    });
-  }
-}
-
-function purgeSession() {
-  if (existsSync(`./${sessions}`)) {
-    let directorio = readdirSync(`./${sessions}`);
-    directorio.filter(file => file.startsWith('pre-key-')).forEach(file => {
-      unlinkSync(`./${sessions}/${file}`);
-    });
-  }
+  global.support = { ffmpeg: test[0], ffprobe: test[1] };
 }
 
 function redefineConsoleMethod(methodName, filterStrings) {
   const originalConsoleMethod = console[methodName];
   console[methodName] = function() {
     const message = arguments[0];
-    if (typeof message === 'string' && filterStrings.some(filterString => message.includes(atob(filterString)))) {
-      arguments[0] = "";
-    }
+    if (typeof message === 'string' && filterStrings.some(s => message.includes(atob(s)))) arguments[0] = "";
     originalConsoleMethod.apply(console, arguments);
   };
 }
-
-setInterval(async () => {
-  if (stopped === 'close' || !conn || !conn.user) return;
-  clearTmp();
-}, 1000 * 60 * 4);
 
 _quickTest().catch(console.error);
 
