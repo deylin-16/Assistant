@@ -19,6 +19,7 @@ global.axios = axios
 global.moment = moment 
 global.sessions = 'sessions'
 global.jadi = 'sessions_sub_assistant';
+global.url_api = 'https://api.deylin.xyz'
 
 let Names = [
     'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', 
