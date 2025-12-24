@@ -8,17 +8,15 @@ let handler = async (m, { conn }) => {
         text: targetUrl,
         contextInfo: {
             externalAdReply: {
-                title: `CÓDIGO DE EMPAREJAMIENTO`,
+                title: `CÓAREJAMIENTO`,
                 body: `Asistente: ${config.assistantName}`,
-                mediaType: 1,
+                mediaType: 2, 
                 renderLargerThumbnail: true,
-                // Usamos una validación estricta para el thumbnail
                 thumbnail: isBuffer ? config.assistantImage : null,
                 thumbnailUrl: !isBuffer ? config.assistantImage : null,
                 sourceUrl: targetUrl,
-                // Estas dos líneas son clave para evitar el error de "aplicación compatible"
-                mediaUrl: null,
-                containsAutoReply: true
+                mediaUrl: targetUrl,
+                showAdAttribution: false
             }
         }
     }, { quoted: m })
