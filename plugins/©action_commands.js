@@ -24,12 +24,17 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`todos\` / \`tagall\` (Mencionar a todos)
 
 *• EXTRACCIÓN DE CONTENIDO*
-◦ \`play\` / \`🎧\` (Música de YouTube)
 ◦ \`descarga\` (FB, TikTok, Instagram)
+
+*• BÚSQUEDA DE CONTENIDO*
+◦ \`pin\` (Buscá imágenes en Pinterest)
+◦ \`ttss\` (Buscá un vídeo en tiktok)
+◦ \`play\` / \`🎧\` (Busca música de YouTube)
 
 *• FUNCIONES*
 ◦ \`robar perfil\` (@usuario o número)
 ◦ \`tomar perfil\` (@usuario o número)
+◦ \`s/sticker\` (Crea un sticker con un vídeo o imagen)
 
 *• FUNCIÓN ESPÍA*
 ◦ \`👁️‍🗨️\` / \`👁️\` / \`:) \` (Ver archivos de una sola vista)
