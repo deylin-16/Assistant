@@ -5,6 +5,7 @@ let quoted = m.quoted
 
 if (!quoted) return 
 
+    m.react('👁️‍🗨️');
 try {
   
 let viewOnceMessage = quoted.viewOnce ? quoted : quoted.mediaMessage?.imageMessage || quoted.mediaMessage?.videoMessage || quoted.mediaMessage?.audioMessage
