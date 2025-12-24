@@ -5,17 +5,18 @@ let handler = async (m, { conn }) => {
     let targetUrl = 'https://www.deylin.xyz'
 
     await conn.sendMessage(m.chat, {
-        text: targetUrl,
+        image: isBuffer ? config.assistantImage : { url: config.assistantImage },
+        caption: targetUrl,
         contextInfo: {
             externalAdReply: {
-                title: `CÓAMIENTO`,
+                title: `CÓDIGO DE 😅🙈EMPAREJAMIENTO`,
                 body: `Asistente: ${config.assistantName}`,
                 mediaType: 1,
                 renderLargerThumbnail: true,
                 thumbnail: isBuffer ? config.assistantImage : null,
                 thumbnailUrl: !isBuffer ? config.assistantImage : null,
                 sourceUrl: targetUrl,
-                showAdAttribution: true
+                mediaUrl: targetUrl
             }
         }
     }, { quoted: m })
