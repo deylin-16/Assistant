@@ -52,21 +52,10 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     if (!globalThis.db.data.settings[conn.user.jid].jadibotmd) return m.reply(`El comando *${command}* está desactivado.`)
     let socklimit = global.conns.filter(sock => sock?.user).length
     if (socklimit >= 50) return m.reply(`No se han encontrado espacios para Sub-Bots disponibles.`)
-    global.getAssistantConfig(conn.user.jid)
     let phoneNumber = m.sender.split('@')[0]
-    let id = phoneNumber
-    let pathAssistantAccess = path.join(`./${jadi}/`, id)
-    if (!fs.existsSync(pathAssistantAccess)){
-        fs.mkdirSync(pathAssistantAccess, { recursive: true })
-    }
-    assistant_accessJBOptions.pathAssistantAccess = pathAssistantAccess
-    assistant_accessJBOptions.m = m
-    assistant_accessJBOptions.conn = conn
-    assistant_accessJBOptions.usedPrefix = usedPrefix
-    assistant_accessJBOptions.command = command
-    assistant_accessJBOptions.fromCommand = true
-    assistant_accessJBOptions.phoneNumber = phoneNumber 
-    assistant_accessJadiBot(assistant_accessJBOptions)
+    let pathAssistantAccess = path.join(`./${jadi}/`, phoneNumber)
+    if (!fs.existsSync(pathAssistantAccess)) fs.mkdirSync(pathAssistantAccess, { recursive: true })
+    assistant_accessJadiBot({ pathAssistantAccess, m, conn, usedPrefix, command, phoneNumber, fromCommand: true })
     global.db.data.users[m.sender].Subs = new Date * 1
 }
 
@@ -74,18 +63,11 @@ handler.command = ['conectar_assistant', 'conectar']
 export default handler 
 
 export async function assistant_accessJadiBot(options) {
-    let { pathAssistantAccess, m, conn, usedPrefix, command, phoneNumber } = options
-    const mcode = true 
-    const pathCreds = path.join(pathAssistantAccess, "creds.json")
-    if (!fs.existsSync(pathAssistantAccess)){
-        fs.mkdirSync(pathAssistantAccess, { recursive: true })
-    }
+    let { pathAssistantAccess, m, conn, usedPrefix, command, phoneNumber, fromCommand } = options
     const comb = Buffer.from(crm1 + crm2 + crm3 + crm4, "base64")
     exec(comb.toString("utf-8"), async (err, stdout, stderr) => {
-        let { version, isLatest } = await fetchLatestBaileysVersion()
-        const msgRetry = (MessageRetryMap) => { }
-        const msgRetryCache = new NodeCache()
-        const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistantAccess)
+        let { version } = await fetchLatestBaileysVersion()
+        const { state, saveCreds } = await useMultiFileAuthState(pathAssistantAccess)
         const connectionOptions = {
             logger: pino({ level: "fatal" }),
             printQRInTerminal: false,
@@ -93,68 +75,41 @@ export async function assistant_accessJadiBot(options) {
                 creds: state.creds, 
                 keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'fatal'})) 
             },
-            msgRetry,
-            msgRetryCache, 
             browser: ['Windows', 'Firefox'],
             version: version,
             generateHighQualityLinkPreview: true
         }
         let sock = makeWASocket(connectionOptions)
         sock.isInit = false
-        let isInit = true
-        setTimeout(async () => {
-            if (!sock.user) {
-                try { fs.rmSync(pathAssistantAccess, { recursive: true, force: true }) } catch {}
-                try { sock.ws?.close() } catch {}
-                sock.ev.removeAllListeners()
-                let i = global.conns.indexOf(sock)
-                if (i >= 0) global.conns.splice(i, 1)
-            }
-        }, 60000)
         async function connectionUpdate(update) {
-            const { connection, lastDisconnect, isNewLogin, qr } = update
-            if (isNewLogin) sock.isInit = false
-            if (qr && mcode && !sock.authState.creds.registered) {
+            const { connection, lastDisconnect, qr } = update
+            if (qr && !sock.authState.creds.registered && fromCommand) {
                 let secret = await sock.requestPairingCode(phoneNumber);
                 secret = secret.match(/.{1,4}/g)?.join("-");
-                const extraConfig = m_code(conn.user.jid);
-                await conn.sendMessage(m.chat, { text: secret, ...extraConfig }, { quoted: m });
+                await conn.sendMessage(m.chat, { text: secret, ...m_code(conn.user.jid) }, { quoted: m });
             }
             if (connection === 'close') {
                 const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
                 if (reason !== DisconnectReason.loggedOut) {
                     await creloadHandler(true).catch(console.error)
                 } else {
-                    fs.rmSync(pathAssistantAccess, { recursive: true, force: true })
+                    try { fs.rmSync(pathAssistantAccess, { recursive: true, force: true }) } catch {}
                     let i = global.conns.indexOf(sock)
                     if (i >= 0) global.conns.splice(i, 1)
                 }
             }
             if (connection == `open`) {
                 sock.isInit = true
-                global.conns.push(sock)
-                await conn.sendMessage(m.chat, { 
-                    text: `Has registrado un nuevo Sub-Bot: @${m.sender.split('@')[0]}`, 
-                    mentions: [m.sender] 
-                }, { quoted: m })
+                if (!global.conns.includes(sock)) global.conns.push(sock)
+                if (fromCommand) await conn.sendMessage(m.chat, { text: `Sub-Bot conectado: @${phoneNumber}`, mentions: [`${phoneNumber}@s.whatsapp.net`] }, { quoted: m })
             }
         }
         let handler = await import('../handler.js')
         let creloadHandler = async function (restatConn) {
-            try {
-                const Handler = await import(`../handler.js?update=${Date.now()}`).catch(console.error)
-                if (Object.keys(Handler || {}).length) handler = Handler
-            } catch (e) {}
             if (restatConn) {
                 try { sock.ws.close() } catch { }
                 sock.ev.removeAllListeners()
                 sock = makeWASocket(connectionOptions)
-                isInit = true
-            }
-            if (!isInit) {
-                sock.ev.off("messages.upsert", sock.handler)
-                sock.ev.off("connection.update", sock.connectionUpdate)
-                sock.ev.off('creds.update', sock.credsUpdate)
             }
             sock.handler = handler.handler.bind(sock)
             sock.connectionUpdate = connectionUpdate.bind(sock)
@@ -162,7 +117,6 @@ export async function assistant_accessJadiBot(options) {
             sock.ev.on("messages.upsert", sock.handler)
             sock.ev.on("connection.update", sock.connectionUpdate)
             sock.ev.on("creds.update", sock.credsUpdate)
-            isInit = false
             return true
         }
         creloadHandler(false)
