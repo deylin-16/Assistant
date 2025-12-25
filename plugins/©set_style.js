@@ -19,7 +19,7 @@ const saveConfigs = (configs) => {
     fs.writeFileSync(DB_PATH, JSON.stringify(configs, null, 2), 'utf8')
 }
 
-const handler = async (m, { conn, text, command, isROwner, isSubAssistant }) => {
+const handler = async (m, { conn, text, command }) => {
     const botId = conn.user.jid
     const configs = loadConfigs()
 
@@ -33,7 +33,7 @@ const handler = async (m, { conn, text, command, isROwner, isSubAssistant }) => 
         saveConfigs(configs)
         m.reply(`✅ Nombre de este asistente cambiado a: *${text}*.`)
 
-    } else if (command === 'setimage') {
+    } else if (command === 'setimage' || command === 'seticono') {
         let q = m.quoted ? m.quoted : m
         let mime = (q.msg || q).mimetype || q.mediaType || ''
         if (!/image\/(jpe?g|png)|webp/.test(mime)) return m.reply('🖼️ Responde a una imagen para este asistente.')
@@ -42,7 +42,7 @@ const handler = async (m, { conn, text, command, isROwner, isSubAssistant }) => 
             let media = await q.download?.()
             configs[botId].assistantImage = media.toString('base64')
             saveConfigs(configs)
-            m.reply('✅ Imagen de identidad guardada para este asistente.')
+            m.reply('✅ Icono de identidad guardado para este asistente.')
         } catch (e) {
             console.error(e)
             m.reply('❌ Error al guardar la imagen.')
@@ -50,7 +50,7 @@ const handler = async (m, { conn, text, command, isROwner, isSubAssistant }) => 
     }
 }
 
-handler.command = ['setname', 'setimage']
+handler.command = ['setname', 'setimage', 'seticono']
 handler.subBot = true 
 
 export default handler
