@@ -7,7 +7,7 @@ let handler = async (m, { conn, text }) => {
   }
 
 
-  let input = text.trim().split(/[]/i);
+  let input = text.trim().split(/[x]/i);
   if (input.length !== 2 || isNaN(input[0]) || isNaN(input[1])) {
     return m.reply('❌ Formato incorrecto.\nUsa: *.reduce 300×300*');
   }
