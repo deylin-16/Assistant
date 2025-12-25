@@ -1,8 +1,7 @@
 let handler = async (m, { conn }) => {
-    const config = 'https://raw.githubusercontent.com/deylin-16/Kirito.my/refs/heads/main/media/images/2.jpg?token=GHSAT0AAAAAADQVEIPPZ4NQNHC2T45Q7HQU2KMZCHQ'
-    
-    let isBuffer = Buffer.isBuffer(config)
+    const config = global.getAssistantConfig(conn.user.jid)
     let targetUrl = 'https://www.deylin.xyz'
+    let fixedImage = 'https://raw.githubusercontent.com/deylin-16/Kirito.my/refs/heads/main/media/images/2.jpg?token=GHSAT0AAAAAADQVEIPPZ4NQNHC2T45Q7HQU2KMZCHQ'
 
     await conn.sendMessage(m.chat, {
         text: targetUrl,
@@ -12,8 +11,7 @@ let handler = async (m, { conn }) => {
                 body: `Asistente: ${config.assistantName}`,
                 mediaType: 2, 
                 renderLargerThumbnail: true,
-                thumbnail: isBuffer ? config.assistantImage : null,
-                thumbnailUrl: !isBuffer ? config.assistantImage : null,
+                thumbnailUrl: fixedImage,
                 sourceUrl: targetUrl,
                 mediaUrl: targetUrl,
                 showAdAttribution: false
