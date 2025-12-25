@@ -1,19 +1,31 @@
 let handler = async (m, { conn }) => {
     const config = global.getAssistantConfig(conn.user.jid)
     let targetUrl = 'https://www.deylin.xyz'
-    let fixedImage = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
+    
+    let thumb = config.assistantImage
+    let isBuffer = Buffer.isBuffer(thumb)
+
+    if (!isBuffer && typeof thumb === 'string' && thumb.startsWith('http')) {
+        try {
+            thumb = await global.getBuffer(thumb)
+            isBuffer = true
+        } catch {
+            isBuffer = false
+        }
+    }
 
     await conn.sendMessage(m.chat, {
-        text: targetUrl, // El link debe estar aquí para que WhatsApp lo detecte
+        text: targetUrl,
         contextInfo: {
             externalAdReply: {
                 title: `CÓDIGO DE EMPAREJAMIENTO`,
                 body: `Asistente: ${config.assistantName}`,
-                mediaType: 1, 
+                mediaType: 1,
                 renderLargerThumbnail: false,
-                thumbnailUrl: fixedImage,
+                showAdAttribution: false,
                 sourceUrl: targetUrl,
-                // No agregues mediaUrl ni showAdAttribution para evitar errores
+                thumbnail: isBuffer? thumb : null,
+                thumbnailUrl:!isBuffer? thumb : null,
                 containsAutoReply: true
             }
         }
