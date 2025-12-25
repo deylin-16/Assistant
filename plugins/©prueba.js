@@ -3,32 +3,27 @@ import fetch from 'node-fetch'
 let handler = async (m, { conn }) => {
     const config = global.getAssistantConfig(conn.user.jid)
     
-    // 1. Enlace de tu canal (Destino real)
-    let canalRedir = 'https://www.deylin.xyz/1' 
+    let canalLink = 'https://www.deylin.xyz/1' 
+    let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
     
-    // 2. URL de la imagen (Solo para descargarla, no se envía como link)
-    let urlImagen = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
-    
-    // 3. DESCARGAMOS LA IMAGEN: Esto convierte la URL en datos reales (buffer)
-    // Así WhatsApp no ve una URL de imagen, ve una "foto" ya cargada.
-    let response = await fetch(urlImagen)
-    let bufferImagen = await response.buffer()
+    let buffer = await (await fetch(iconoUrl)).buffer()
 
     await conn.sendMessage(m.chat, {
-        text: canalRedir, // Texto base
+        text: canalLink, // Texto obligatorio para que el mensaje tenga un "ancla"
         contextInfo: {
             externalAdReply: {
                 title: config.assistantName,
-                body: '🚀 ¡Únete a la comunidad!',
-                
-                // USAMOS 'thumbnail' (con el buffer), NO 'thumbnailUrl'
-                // Esto evita que WhatsApp use la URL de la imagen como destino
-                thumbnail: bufferImagen, 
-                
-                // Este es el ÚNICO link que WhatsApp reconocerá para el clic
-                sourceUrl: canalRedir,
-                
+                body: '🚀 COMUNIDAD OFICIAL',
+                thumbnail: buffer,
                 mediaType: 1,
+                
+                // ESTA ES LA CLAVE:
+                // Si dejas mediaUrl vacío o con la URL de la imagen, da error.
+                // Al poner el link del CANAL aquí también, WhatsApp asocia 
+                // los datos visuales directamente con la web del canal.
+                mediaUrl: canalLink, 
+                sourceUrl: canalLink,
+                
                 renderLargerThumbnail: true,
                 showAdAttribution: true
             }
