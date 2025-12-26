@@ -52,7 +52,7 @@ async function igfb_dl(url) {
 
 var handler = async (m, { conn, args }) => {
     if (!args[0]) {
-        return conn.reply(m.chat, `Introduzca un identificador (enlace) para iniciar el proceso de adquisición de datos.`, m);
+        return global.design(conn, m, `Introduzca un identificador (enlace) para iniciar el proceso de adquisición de datos.`);
     }
 
     const url = args[0];
@@ -60,7 +60,7 @@ var handler = async (m, { conn, args }) => {
 
     try {
         await m.react('⏳');
-        await conn.reply(m.chat, getRandomResponse(processingResponses), m);
+        await global.design(conn, m, getRandomResponse(processingResponses));
 
         if (url.includes('tiktok.com')) {
             const data = await tiktokdl(url);
@@ -99,7 +99,7 @@ var handler = async (m, { conn, args }) => {
 
         } else {
             await m.react('❌');
-            return conn.reply(m.chat, getErrorResponse('unknown'), m);
+            return global.design(conn, m, getErrorResponse('unknown'));
         }
 
         if (result) {
@@ -111,7 +111,7 @@ var handler = async (m, { conn, args }) => {
     } catch (error) {
         console.error(error);
         await m.react('❌');
-        return conn.reply(m.chat, getErrorResponse('general'), m);
+        return global.design(conn, m, getErrorResponse('general'));
     }
 };
 
