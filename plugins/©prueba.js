@@ -10,13 +10,15 @@ let handler = async (m, { conn }) => {
         const buffer = await response.buffer()
 
         // Usamos await para asegurar que la función termine antes de reaccionar
-        await conn.sendModify(m.chat, "Haz clic aquí para unirte al grupo 🚀", m, {
-            title: config?.assistantName || 'ASSEMBLY SYSTEM',
-            body: '¡Comunidad Oficial!',
-            url: "https://chat.whatsapp.com/K9RNlIG2CnnEZeQgOmZOQl",
-            thumbnail: buffer,
-            largeThumb: true // Pruébalo activado ahora
-        })
+        // Prueba esto en tu plugin
+await conn.sendModify(m.chat, "Prueba de enlace normal", m, {
+    title: 'TEST NAVIGATOR',
+    body: 'Haz clic para probar Google',
+    url: "https://www.google.com", // Si esto abre, tu simple.js ya está bien
+    thumbnail: buffer,
+    largeThumb: true
+})
+
 
         await m.react('✅')
 
