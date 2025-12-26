@@ -21,13 +21,7 @@ global.sessions = 'sessions'
 global.jadi = 'sessions_sub_assistant';
 global.url_api = 'https://api.deylin.xyz'
 
-
-
-    
-                
-
-   
- global.design = async (conn, m, text = '') => {
+global.design = async (conn, m, text = '') => {
     const config = global.getAssistantConfig(conn.user.jid)
     const mainBotJid = global.conn?.user?.jid.split('@')[0] 
     const currentBotJid = conn.user.jid.split('@')[0]
@@ -40,9 +34,9 @@ global.url_api = 'https://api.deylin.xyz'
     let buffer
 
     if (config && config.assistantIcon) {
-        buffer = Buffer.from(config.assistantIcon, 'base64')
+        buffer = config.assistantIcon
     } else if (config && config.assistantImage) {
-        buffer = Buffer.from(config.assistantImage, 'base64')
+        buffer = config.assistantImage
     } else {
         let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
         buffer = await global.getBuffer(iconoUrl)
@@ -54,11 +48,11 @@ global.url_api = 'https://api.deylin.xyz'
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
                 newsletterJid: '120363406846602793@newsletter',
-                newsletterName: `SIGUE EL CANAL DE: ${config.assistantName || 'ASISTENTE'}`,
+                newsletterName: `SIGUE EL CANAL DE: ${config.assistantName}`,
                 serverMessageId: 1
             },
             externalAdReply: {
-                title: config.assistantName || 'Asistente',
+                title: config.assistantName,
                 body: '🚀 Toca para ver canal',
                 thumbnail: buffer,
                 mediaType: 1,
@@ -70,13 +64,6 @@ global.url_api = 'https://api.deylin.xyz'
         }
     }, { quoted: m })
 }
-
-
-
- 
-
-
-
 
 global.getBuffer = async (url, options = {}) => {
     try {
@@ -117,7 +104,7 @@ else saludo = 'Lɪɴᴅᴀ Nᴏᴄʜᴇ 🌃'
 global.saludo = saludo;
 
 let Names = [
-    'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', '𝕵𝖎𝖏𝖎 - 𝕬𝖘𝖘𝖎𝖘𝖙𝖆𝖓𝖙', '🄹🄸🄹🄸 - 🄰🅂🅂🄸🅂🅃🄰🄽🅃', '𝒥𝒾𝒿𝒾 - 𝒜𝓈𝓈𝒾𝓈𝓉🇦𝓃𝓉'
+    'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', '𝕵𝖎𝖏𝖎 - 𝕬𝖘𝖘𝖎𝖘𝖙𝖆𝖓𝒕', '🄹🄸🄹🄸 - 🄰🅂🅂🄸🅂🅃🄰🄽🅃', '𝒥𝒾𝒿𝒾 - 𝒜𝓈𝓈ɪ𝓈ᴛ🇦𝓃𝓉'
 ];
 global.bot = Names[Math.floor(Math.random() * Names.length)];
 
@@ -133,12 +120,18 @@ global.getAssistantConfig = (botJid) => {
     } catch (e) { console.error(e) }
 
     const sessionConfig = configs[botJid]
-    global.name = sessionConfig?.assistantName || global.bot || "Asistente"
-    global.img = sessionConfig?.assistantImage 
+    
+    let assistantName = sessionConfig?.assistantName || global.bot || "Asistente"
+    
+    let assistantImage = sessionConfig?.assistantImage 
         ? Buffer.from(sessionConfig.assistantImage, 'base64') 
-        : "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg"
+        : null
 
-    return { assistantName: global.name, assistantImage: global.img }
+    let assistantIcon = sessionConfig?.assistantIcon 
+        ? Buffer.from(sessionConfig.assistantIcon, 'base64') 
+        : null
+
+    return { assistantName, assistantImage, assistantIcon }
 }
 
 let file = fileURLToPath(import.meta.url)
