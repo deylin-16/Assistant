@@ -28,15 +28,25 @@ const handler = async (m, { conn, text, command }) => {
     }
 
     if (command === 'setname') {
-        if (!text) return m.reply('⚠️ Introduce el nombre para este asistente.')
+        if (text === 'reset') {
+            configs[botId].assistantName = null
+            saveConfigs(configs)
+            return m.reply('🔄 Nombre del asistente restablecido.')
+        }
+        if (!text) return m.reply('⚠️ Introduce el nombre para este asistente o escribe *reset*.')
         configs[botId].assistantName = text
         saveConfigs(configs)
         m.reply(`✅ Nombre de este asistente cambiado a: *${text}*.`)
 
     } else if (command === 'setimage') {
+        if (text === 'reset') {
+            configs[botId].assistantImage = null
+            saveConfigs(configs)
+            return m.reply('🔄 Imagen de fondo restablecida.')
+        }
         let q = m.quoted ? m.quoted : m
         let mime = (q.msg || q).mimetype || q.mediaType || ''
-        if (!/image\/(jpe?g|png)|webp/.test(mime)) return m.reply('🖼️ Responde a una imagen para el fondo.')
+        if (!/image\/(jpe?g|png)|webp/.test(mime)) return m.reply('🖼️ Responde a una imagen para el fondo o escribe *reset*.')
 
         try {
             let media = await q.download?.()
@@ -49,9 +59,14 @@ const handler = async (m, { conn, text, command }) => {
         }
 
     } else if (command === 'seticono') {
+        if (text === 'reset') {
+            configs[botId].assistantIcon = null
+            saveConfigs(configs)
+            return m.reply('🔄 Icono pequeño restablecido.')
+        }
         let q = m.quoted ? m.quoted : m
         let mime = (q.msg || q).mimetype || q.mediaType || ''
-        if (!/image\/(jpe?g|png)|webp/.test(mime)) return m.reply('🖼️ Responde a una imagen para el icono pequeño.')
+        if (!/image\/(jpe?g|png)|webp/.test(mime)) return m.reply('🖼️ Responde a una imagen para el icono pequeño o escribe *reset*.')
 
         try {
             let media = await q.download?.()
@@ -62,10 +77,15 @@ const handler = async (m, { conn, text, command }) => {
             console.error(e)
             m.reply('❌ Error al guardar el icono.')
         }
+
+    } else if (command === 'resetuser') {
+        configs[botId] = { assistantName: null, assistantImage: null, assistantIcon: null }
+        saveConfigs(configs)
+        m.reply('🧹 Se han restablecido todos los parámetros del asistente (Nombre, Fondo e Icono).')
     }
 }
 
-handler.command = ['setname', 'setimage', 'seticono']
+handler.command = ['setname', 'setimage', 'seticono', 'resetuser']
 handler.subBot = true 
 
 export default handler
