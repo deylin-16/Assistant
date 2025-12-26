@@ -10,8 +10,6 @@ export async function before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, 
   let chat = global.db.data.chats[m.chat]
   let user = global.db.data.users[m.sender]
 
-  // Esta línea debe estar activa para respetar la configuración del chat
-  //if (!chat.antiLink) return
 
   if (isAdmin || isOwner || m.fromMe || isROwner) return
 
@@ -33,14 +31,14 @@ export async function before(m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, 
     try {
       if (isBotAdmin) {
         
-        // 1. Intentar eliminar el mensaje (falla silenciosamente si no puede, pero no detiene el script)
+       
         try {
             await conn.sendMessage(m.chat, { delete: { remoteJid: m.chat, fromMe: false, id: bang, participant: delet } })
         } catch (e) {
             console.error(e.message)
         }
 
-        // 2. Ejecutar la lógica de advertencia y expulsión
+        
         user.warnAntiLink += 1
         let currentWarnings = user.warnAntiLink
         const maxWarnings = 3
@@ -67,7 +65,7 @@ Lo siento ${mentionUser}, acumulaste ${maxWarnings} advertencias por enviar enla
         }
 
       } else {
-        // Lógica para cuando el bot NO es admin (funciona correctamente)
+        
         await conn.sendMessage(m.chat, { 
           text: `🚨 ¡ALERTA DE ENLACE! 🚨
 Hey ${mentionUser}, no envíes enlaces de grupos o canales. Está prohibido.
