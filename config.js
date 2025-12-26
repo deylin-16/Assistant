@@ -84,9 +84,11 @@ global.getBuffer = async (url, options = {}) => {
     }
 }
 
-global.d = new Date(new Date().getTime() + 3600000)
+// CORRECCIÓN DE FECHAS
+const d = new Date(new Date().getTime() + 3600000)
+global.d = d
 global.locale = 'es'
-global.dia = d.toLocaleDateString(locale, {weekday: 'long'})
+global.dia = d.toLocaleDateString('es', {weekday: 'long'})
 global.fecha = d.toLocaleDateString('es', {day: 'numeric', month: 'numeric', year: 'numeric'})
 global.mes = d.toLocaleDateString('es', {month: 'long'})
 global.año = d.toLocaleDateString('es', {year: 'numeric'})
@@ -120,9 +122,9 @@ global.getAssistantConfig = (botJid) => {
     } catch (e) { console.error(e) }
 
     const sessionConfig = configs[botJid]
-    
+
     let assistantName = sessionConfig?.assistantName || global.bot || "Asistente"
-    
+
     let assistantImage = sessionConfig?.assistantImage 
         ? Buffer.from(sessionConfig.assistantImage, 'base64') 
         : null
