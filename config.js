@@ -40,7 +40,7 @@ global.url_api = 'https://api.deylin.xyz'
     let buffer
 
     if (config && config.assistantIcon) {
-        buffer = Buffer.from(config.assistanticon, 'base64')
+        buffer = Buffer.from(config.assistantIcon, 'base64')
     } else if (config && config.assistantImage) {
         buffer = Buffer.from(config.assistantImage, 'base64')
     } else {
@@ -70,6 +70,7 @@ global.url_api = 'https://api.deylin.xyz'
         }
     }, { quoted: m })
 }
+
 
 
  
