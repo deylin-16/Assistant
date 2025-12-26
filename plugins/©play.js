@@ -144,7 +144,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
       ago = search.ago;
     } else {
       const search = await yts.search({ query: text, pages: 1 });
-      if (!search.videos.length) return m.reply("❌ No se encontró nada con ese nombre.");
+      if (!search.videos.length) return global.design(conn, m, "❌ No se encontró nada con ese nombre.");
       const videoInfo = search.videos[0];
       url = videoInfo.url;
       title = videoInfo.title;
@@ -162,7 +162,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
     if (["mp3", "play"].includes(command)) {
       await m.react("🎧");
       const dl = await savetube.download(url, "audio");
-      if (!dl.status) return m.reply(`❌ Error: ${dl.error}`);
+      if (!dl.status) return global.design(conn, m, `❌ Error: ${dl.error}`);
       
       
       await conn.sendMessage(
@@ -189,7 +189,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
     
   } catch (error) {
     console.error("❌ Error:", error);
-    return m.reply(`⚠️ Ocurrió un error: ${error.message}`);
+    return global.design(conn, m, `⚠️ Ocurrió un error: ${error.message}`);
   }
 };
 
