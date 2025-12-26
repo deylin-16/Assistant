@@ -42,7 +42,7 @@ switch (type) {
       break;
 
     }
-  conn.reply(m.chat, ` La función *${type}* se *${isEnable ? 'activó' : 'desactivó'}* ${isAll ? 'para este Bot' : isUser ? '' : 'para este chat'}`, m, );
+  global.design(conn, m, ` La función *${type}* se *${isEnable ? 'activó' : 'desactivó'}* ${isAll ? 'para este Bot' : isUser ? '' : 'para este chat'}`);
 };
 
 handler.command = [
