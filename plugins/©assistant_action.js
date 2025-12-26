@@ -41,11 +41,18 @@ const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participan
         await conn.groupUpdateSubject(m.chat, text)
         m.reply(randomResponse('RENAME_SUCCESS', text))
 
-    } else if (/desc|setdesc/i.test(command)) {
-        let newDesc = text || (m.quoted ? m.quoted.text : '')
-        if (!newDesc) return m.reply(randomResponse('DESC_MISSING'))
+   } else if (/desc|setdesc/i.test(command)) {
+    let newDesc = text || (m.quoted ? m.quoted.text : '')
+    if (!newDesc || newDesc.length === 0) return m.reply(randomResponse('DESC_MISSING'))
+    
+    try {
         await conn.groupUpdateDescription(m.chat, newDesc)
         m.reply(randomResponse('DESC_SUCCESS'))
+    } catch (e) {
+        console.error(e)
+        m.reply('❌ Error al actualizar la descripción. Asegúrate de que el bot sea administrador.')
+    }
+
 
     } else if (/setfoto|setpp/i.test(command)) {
         let q = m.quoted ? m.quoted : m
