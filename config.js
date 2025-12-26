@@ -127,7 +127,7 @@ global.getAssistantConfig = (botJid) => {
 
     let assistantImage = sessionConfig?.assistantImage 
         ? Buffer.from(sessionConfig.assistantImage, 'base64') 
-        : null
+        : 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
 
     let assistantIcon = sessionConfig?.assistantIcon 
         ? Buffer.from(sessionConfig.assistantIcon, 'base64') 
