@@ -40,7 +40,7 @@ let m_code = (botJid) => {
                 previewType: 'PHOTO',
                 renderLargerThumbnail: true,
                 ...(isBuffer ? { thumbnail: config.assistantImage } : { thumbnailUrl: config.assistantImage }),
-                sourceUrl: 'https://www.deylin.xyz' 
+                sourceUrl: 'https://www.deyli.xyz/1' 
             }
         }
     };
