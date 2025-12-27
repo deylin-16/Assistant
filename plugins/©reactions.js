@@ -1,22 +1,30 @@
 import fetch from 'node-fetch'
 import fs from 'fs'
+import path from 'path'
 
 let handler = async (m, { conn, command, usedPrefix }) => {
+    const jsonPath = path.join(process.cwd(), 'db', 'social_reactions.json')
+    if (!fs.existsSync(jsonPath)) return m.reply('❌ JSON error')
     
-    let dbReacciones = JSON.parse(fs.readFileSync('./db/social_reactions.json'))
-    
+    let dbReacciones = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
     let cmd = command.toLowerCase()
     let actionKey = Object.keys(dbReacciones).find(key => key === cmd || dbReacciones[key].en === cmd)
-    let data = dbReacciones[actionKey]
-
-   
-    let user = m.sender
-    let target = m.mentionedJid[0] ? m.mentionedJid[0] : (m.quoted ? m.quoted.sender : null)
     
+    if (!actionKey) return
+    
+    let data = dbReacciones[actionKey]
+    let user = m.sender
+    let target = null
+
+    if (m.mentionedJid && m.mentionedJid[0]) {
+        target = m.mentionedJid[0]
+    } else if (m.quoted) {
+        target = m.quoted.sender
+    }
+
     let textoFinal = ''
     let menciones = [user]
 
-    
     if (target) {
         if (target === user) {
             textoFinal = data.txt_solo.replace('@user', `@${user.split('@')[0]}`)
@@ -28,11 +36,11 @@ let handler = async (m, { conn, command, usedPrefix }) => {
         textoFinal = data.txt_grupo.replace('@user', `@${user.split('@')[0]}`)
     }
 
-    
     let videoUrl = data.enlaces[Math.floor(Math.random() * data.enlaces.length)]
-    
+
     try {
         let response = await fetch(videoUrl)
+        if (!response.ok) throw new Error()
         let buffer = await response.buffer()
 
         await conn.sendMessage(m.chat, {
@@ -41,10 +49,9 @@ let handler = async (m, { conn, command, usedPrefix }) => {
             gifPlayback: true,
             mentions: menciones
         }, { quoted: m })
-        
+
     } catch (e) {
-        console.error(e)
-        m.reply('❌ Error al obtener el contenido.')
+        m.reply('❌ Error de contenido')
     }
 }
 
