@@ -44,57 +44,18 @@ let m_code = (botJid) => {
 }
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-    if (command === 'hd2') {
-        try {
-            const q = m.quoted ? m.quoted : m
-            const mime = (q.msg || q).mimetype || q.mediaType || ''
-            if (!mime || !mime.startsWith('image/')) {
-                return conn.reply(m.chat, `Envía o responde a una imagen con el comando:\n\n${usedPrefix + command} [method] [quality]\n\n*Methods:* 1, 2, 3, 4\n*Quality:* low, medium, high`, m)
-            }
-            const method = parseInt(args[0]) || 1
-            const quality = args[1]?.toLowerCase() || 'medium'
-            await conn.sendMessage(m.chat, { text: `⌛ Procesando imagen...` }, { quoted: m })
-            const buffer = await q.download()
-            const enhancedBuffer = await ihancer(buffer, { method, size: quality })
-            await conn.sendMessage(m.chat, { 
-                image: enhancedBuffer,
-                caption: `✅ Imagen mejorada\n- Método: ${method}\n- Calidad: ${quality}`,
-                fileName: 'enhanced.jpg'
-            }, { quoted: m })        
-        } catch (error) {
-            conn.sendMessage(m.chat, { text: `❌ Error: ${error.message}` }, { quoted: m })
-        }
-    }
-
-    if (command === 'toimg') {
-        try {
-            const q = m.quoted ? m.quoted : m
-            if (!/stickerMessage/i.test(q.mtype)) return m.reply(`⚠️ Responde a un sticker`)
-            let stickerBuffer = await q.download()
-            let outPath = path.join(process.cwd(), `temp_${Date.now()}.jpg`)
-            await sharp(stickerBuffer).jpeg().toFile(outPath)
-            await conn.sendFile(m.chat, outPath, "sticker.jpg", "✅ Sticker convertido", m)
-            if (fs.existsSync(outPath)) fs.unlinkSync(outPath)
-        } catch (e) {
-            m.reply("❌ Error al convertir.")
-        }
-    }
-
     if (command === 'conectar' || command === 'conectar_assistant') {
         if (!globalThis.db.data.settings[conn.user.jid]?.jadibotmd) return m.reply(`Comando desactivado.`)
         let socklimit = global.conns.filter(sock => sock?.user).length
         if (socklimit >= 50) return m.reply(`No hay espacios disponibles.`)
         let phoneNumber = m.sender.split('@')[0]
-        let pathAssistantAccess = path.join(process.cwd(), 'sessions', phoneNumber)
+        let pathAssistantAccess = path.join(process.cwd(), global.jadi, phoneNumber)
         if (!fs.existsSync(pathAssistantAccess)) fs.mkdirSync(pathAssistantAccess, { recursive: true })
         assistant_accessJadiBot({ pathAssistantAccess, m, conn, phoneNumber, fromCommand: true })
     }
 }
 
-handler.help = ['hd2', 'toimg', 'conectar']
-handler.tags = ['ia', 'tools', 'jadibot']
-handler.command = /^(hd2|toimg|conectar|conectar_assistant)$/i 
-
+handler.command = /^(conectar|conectar_assistant)$/i 
 export default handler 
 
 export async function assistant_accessJadiBot(options) {
@@ -111,7 +72,8 @@ export async function assistant_accessJadiBot(options) {
             keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'fatal'})) 
         },
         browser: ['Ubuntu', 'Chrome', '20.0.04'],
-        version: version
+        version: version,
+        markOnlineOnConnect: false
     }
 
     let sock = makeWASocket(connectionOptions)
@@ -146,7 +108,6 @@ export async function assistant_accessJadiBot(options) {
         if (connection === 'open') {
             sock.isInit = true
             if (!global.conns.some(s => s.user?.jid === sock.user.jid)) global.conns.push(sock)
-            await conn.sendMessage(chatID, { text: `✅ Sub-Bot conectado: @${phoneNumber}`, mentions: [`${phoneNumber}@s.whatsapp.net`] })
         }
     }
 
@@ -154,19 +115,4 @@ export async function assistant_accessJadiBot(options) {
     sock.ev.on("creds.update", saveCreds)
     let handlerImport = await import('../handler.js')
     sock.ev.on("messages.upsert", handlerImport.handler.bind(sock))
-}
-
-async function ihancer(buffer, { method = 1, size = 'low' } = {}) {
-    const _size = ['low', 'medium', 'high']
-    const form = new FormData()
-    form.append('method', method.toString())
-    form.append('is_pro_version', 'false')
-    form.append('is_enhancing_more', 'false')
-    form.append('max_image_size', size)
-    form.append('file', buffer, `image_${Date.now()}.jpg`)
-    const { data } = await axios.post('https://ihancer.com/api/enhance', form, {
-        headers: { ...form.getHeaders(), 'user-agent': 'Dart/3.5 (dart:io)' },
-        responseType: 'arraybuffer'
-    })
-    return Buffer.from(data)
 }
