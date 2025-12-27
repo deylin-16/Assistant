@@ -86,7 +86,7 @@ let handler = async (m, { conn, args }) => {
       finalBuffer = await makeImageWithText(buffer, txt, color)
     }
 
-    const stiker = await sticker(finalBuffer, false, global.name(conn), user)
+    const stiker = await sticker(finalBuffer, false, `BOT: ${global.name(conn)}`, user)
     if (stiker) await conn.sendMessage(m.chat, { sticker: stiker }, { quoted: m })
     
     await m.react('✅')
