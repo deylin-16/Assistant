@@ -41,9 +41,8 @@ handler.all = async function (m) {
 
     let { key } = await conn.sendMessage(m.chat, { text: 'Pensando...' }, { quoted: m })
     await conn.sendPresenceUpdate('composing', m.chat)
-    global.getAssistantConfig(conn.user.jid)
 
-    let assistantName = (global.name || 'Asistente');
+    let assistantName = (global.name(conn) || 'Asistente');
     let username = m.pushName || 'Usuario'
     let jijiPrompt = `Eres ${assistantName}. 
 
