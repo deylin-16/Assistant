@@ -1,15 +1,28 @@
+import fetch from 'node-fetch'
+
 let handler = async (m, { conn, groupMetadata }) => {
     const who = m.sender
     const nombreDelGrupo = m.isGroup ? groupMetadata.subject : 'Chat de Prueba'
     const totalMembers = m.isGroup ? groupMetadata.participants.length : '1'
     const mentionListText = `@${who.split('@')[0]}`
 
-    // Obtención de imagen (Prioridad: Perfil > Asistente > Default)
+    // 1. Obtener la URL de la imagen
     let ppUrl
     try {
         ppUrl = await conn.profilePictureUrl(who, 'image')
     } catch {
         ppUrl = global.getAssistantConfig?.(conn.user.jid)?.assistantImage || 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
+    }
+
+    // 2. Convertir la imagen a Buffer (ESTO ES LO QUE HACE QUE APAREZCA)
+    let imageBuffer
+    try {
+        const response = await fetch(ppUrl)
+        imageBuffer = await response.buffer()
+    } catch {
+        // Imagen de respaldo si falla la descarga
+        const response = await fetch('https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg')
+        imageBuffer = await response.buffer()
     }
 
     // --- DISEÑO 1: BANNER INFORMATIVO (Imagen Grande) ---
@@ -28,14 +41,14 @@ let handler = async (m, { conn, groupMetadata }) => {
                 body: nombreDelGrupo,
                 mediaType: 1,
                 renderLargerThumbnail: true,
-                thumbnailUrl: ppUrl,
+                thumbnail: imageBuffer, // Usamos el buffer aquí
                 sourceUrl: 'https://www.deylin.xyz'
             }
         }
     }
     await conn.sendMessage(m.chat, { text: 'Este es el *Diseño 1* (Banner Grande)' }, { quoted: style1 })
 
-    // --- DISEÑO 2: COMPACTO (Imagen Pequeña a la derecha) ---
+    // --- DISEÑO 2: COMPACTO (Imagen Pequeña) ---
     let style2 = {
         key: { fromMe: false, participant: who, remoteJid: "status@broadcast" },
         message: { 
@@ -50,7 +63,7 @@ let handler = async (m, { conn, groupMetadata }) => {
                 body: `Total: ${totalMembers} usuarios`,
                 mediaType: 1,
                 renderLargerThumbnail: false,
-                thumbnailUrl: ppUrl,
+                thumbnail: imageBuffer, // Usamos el buffer aquí
                 sourceUrl: null
             }
         }
@@ -71,7 +84,7 @@ let handler = async (m, { conn, groupMetadata }) => {
                 title: `✅ PRUEBA DE SISTEMA`,
                 body: `Usuario verificado: ${mentionListText}`,
                 previewType: "PHOTO",
-                thumbnailUrl: ppUrl,
+                thumbnail: imageBuffer, // Usamos el buffer aquí
                 containsAutoReply: true
             }
         }
@@ -81,6 +94,6 @@ let handler = async (m, { conn, groupMetadata }) => {
 }
 
 handler.command = /^(prueba|testdesign)$/i
-handler.rowner = true // Solo tú puedes probarlo para no spamear
+handler.rowner = true 
 
 export default handler
