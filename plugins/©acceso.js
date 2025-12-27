@@ -80,9 +80,10 @@ export async function assistant_accessJadiBot(options) {
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, qr } = update
-        const chatID = m?.chat || phoneNumber + '@s.whatsapp.net'
+        const chatID = m?.chat || (phoneNumber ? phoneNumber + '@s.whatsapp.net' : null)
 
         if (qr && !sock.authState.creds.registered && fromCommand && !isPairingSent) {
+            if (!chatID) return
             isPairingSent = true 
             setTimeout(async () => {
                 try {
