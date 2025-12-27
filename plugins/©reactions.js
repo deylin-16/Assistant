@@ -1,17 +1,16 @@
 import fetch from 'node-fetch'
 import fs from 'fs'
-import path from 'path'
 
 let handler = async (m, { conn, command, usedPrefix }) => {
-    const jsonPath = path.join(process.cwd(), 'db', 'social_reactions.json')
-    if (!fs.existsSync(jsonPath)) return m.reply('❌ JSON error')
-    
-    let dbReacciones = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
+    const path = './db/social_reactions.json'
+    if (!fs.existsSync(path)) return m.reply('❌ No se encontró el archivo: db/social_reactions.json')
+
+    let dbReacciones = JSON.parse(fs.readFileSync(path, 'utf-8'))
     let cmd = command.toLowerCase()
     let actionKey = Object.keys(dbReacciones).find(key => key === cmd || dbReacciones[key].en === cmd)
-    
+
     if (!actionKey) return
-    
+
     let data = dbReacciones[actionKey]
     let user = m.sender
     let target = null
@@ -40,7 +39,7 @@ let handler = async (m, { conn, command, usedPrefix }) => {
 
     try {
         let response = await fetch(videoUrl)
-        if (!response.ok) throw new Error()
+        if (!response.ok) throw new Error('Download Failed')
         let buffer = await response.buffer()
 
         await conn.sendMessage(m.chat, {
@@ -51,12 +50,11 @@ let handler = async (m, { conn, command, usedPrefix }) => {
         }, { quoted: m })
 
     } catch (e) {
-        m.reply(`❌ Error de contenido ${e}`)
+        m.reply(`❌ Error al cargar el contenido.`)
     }
 }
 
 handler.command = /^(beso|kiss|abrazo|hug|golpe|slap|patada|kick|matar|kill|saludo|hello|triste|sad|reir|laugh|enojado|angry|comer|eat|dormir|sleep|bailar|dance|correr|run|disparar|shoot|cachetada|slap2|asustado|scared|pensar|think|tímido|shy|morder|bite|acariciar|pat|lamer|lick|mirar|stare|besogay|kiss2|aburrido|bored|asombro|wow)$/i
-
 handler.group = true
 
 export default handler
