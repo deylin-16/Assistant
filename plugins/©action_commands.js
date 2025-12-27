@@ -35,6 +35,12 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`robar perfil\` (@usuario o número)
 ◦ \`tomar perfil\` (@usuario o número)
 ◦ \`s/sticker\` (Crea un sticker con un vídeo o imagen)
+◦ \`toimg\` (Convierte un sticker a imagen)
+
+*• INTELIGENCIA ARTIFICIAL*
+◦ \`ia\` (Habla con chatGPT)
+◦ \`hd\` (Mejora la calidad de una imagen)
+◦ \`res\` (Activa las respuestas de IA)
 
 *• FUNCIÓN ESPÍA*
 ◦ \`read\` / \`ver\` / \`:) \` (Ver archivos de una sola vista)
