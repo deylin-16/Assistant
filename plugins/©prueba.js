@@ -3,59 +3,65 @@ import fetch from 'node-fetch'
 let handler = async (m, { conn, groupMetadata }) => {
     const who = m.sender
     const name = conn.getName(who)
-    const nombreDelGrupo = m.isGroup ? groupMetadata.subject : 'Grupo de Prueba'
-    
-    // 1. Intentar obtener la URL de la foto de perfil
+    const assistant = global.getAssistantConfig?.(conn.user.jid) || { assistantName: 'Deylin-Bot' }
+    const canalLink = 'https://whatsapp.com/channel/0029VaeW9unBA1f3v9Y8Pk38'
+
+    // Obtención de imagen
     let ppUrl
     try {
         ppUrl = await conn.profilePictureUrl(who, 'image')
-    } catch (e) {
-        // Si falla (por privacidad o falta de foto), usamos la del asistente
-        ppUrl = global.getAssistantConfig?.(conn.user.jid)?.assistantImage || 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
-    }
-
-    // 2. Convertir la URL a Buffer (Indispensable para que se vea)
-    let imageBuffer
-    try {
-        const res = await fetch(ppUrl)
-        if (!res.ok) throw new Error()
-        imageBuffer = await res.buffer()
     } catch {
-        const res = await fetch('https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg')
-        imageBuffer = await res.buffer()
+        ppUrl = assistant.assistantImage || 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
     }
 
-    // --- DISEÑO: PERFIL INTEGRADO (ESTILO MODERNO) ---
-    // Construimos el mensaje de forma que el 'quoted' sea el perfil
-    await conn.sendMessage(m.chat, { 
-        text: `Hola @${who.split('@')[0]}, ¡bienvenido al grupo!`,
-        mentions: [who],
-        contextInfo: {
-            externalAdReply: {
-                title: `PERFIL: ${name}`,
-                body: `Integrante de ${nombreDelGrupo}`,
-                mediaType: 1,
-                renderLargerThumbnail: true, // Esto hace que la foto se vea grande y clara
-                thumbnail: imageBuffer, // El buffer con tu foto
-                sourceUrl: 'https://www.deylin.xyz',
-                showAdAttribution: false
-            }
-        }
-    }, { 
-        quoted: {
-            key: { 
-                participant: who, // Vinculamos el mensaje a tu JID
-                remoteJid: "status@broadcast" 
-            },
-            message: {
-                locationMessage: { // Usar locationMessage a veces ayuda a forzar la miniatura
-                    degreesLatitude: 0,
-                    degreesLongitude: 0,
-                    name: name,
-                    jpegThumbnail: imageBuffer // Doble refuerzo de imagen
-                }
-            }
-        } 
+    let buffer = await (await fetch(ppUrl)).buffer()
+
+    // --- ESTILO 1: CULTURA CYBERPUNK / SISTEMA (Tech Style) ---
+    let style1 = {
+        title: `〔 SYSTEM ACCESS: ${assistant.assistantName.toUpperCase()} 〕`,
+        body: '💾 MEMORY_LOAD: Click to Sync Channel',
+        thumbnail: buffer,
+        mediaType: 1,
+        renderLargerThumbnail: true,
+        showAdAttribution: true,
+        sourceUrl: canalLink,
+        mediaUrl: canalLink
+    }
+    await conn.sendMessage(m.chat, { text: '`[VIRTUAL_STATUS]: ONLINE`' }, { 
+        quoted: { key: { participant: who, remoteJid: "status@broadcast" }, message: { conversation: '⚡ Neural Link Connected' }},
+        contextInfo: { externalAdReply: style1 }
+    })
+
+    // --- ESTILO 2: CULTURA POP / SOCIAL MEDIA (Vibrant Style) ---
+    let style2 = {
+        title: `✨ @${name} | New Post!`,
+        body: '🚀 ¡Únete a la mejor comunidad ahora!',
+        thumbnail: buffer,
+        mediaType: 1,
+        renderLargerThumbnail: false, // Miniatura compacta a la derecha
+        showAdAttribution: true,
+        sourceUrl: canalLink,
+        mediaUrl: canalLink
+    }
+    await conn.sendMessage(m.chat, { text: '¡No te pierdas de nada en nuestro canal oficial! 🔥' }, { 
+        quoted: { key: { participant: who, remoteJid: "status@broadcast" }, message: { conversation: 'Trending Topic #1' }},
+        contextInfo: { externalAdReply: style2 }
+    })
+
+    // --- ESTILO 3: ESTILO ZEN / MINIMALISTA (Japanese Aesthetic) ---
+    let style3 = {
+        title: '平和 | Paz y Armonía',
+        body: `Assistant: ${assistant.assistantName} ⛩️`,
+        thumbnail: buffer,
+        mediaType: 1,
+        renderLargerThumbnail: true,
+        showAdAttribution: false,
+        sourceUrl: canalLink,
+        mediaUrl: canalLink
+    }
+    await conn.sendMessage(m.chat, { text: '「 ようこそ 」- Bienvenid@ a este espacio de paz.' }, { 
+        quoted: { key: { participant: who, remoteJid: "status@broadcast" }, message: { conversation: 'Simple is better.' }},
+        contextInfo: { externalAdReply: style3 }
     })
 }
 
