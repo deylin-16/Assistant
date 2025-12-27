@@ -23,7 +23,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const isSubBotFile = fs.existsSync(pathUserSession)
 
     if (!isMainBot && !isSubBotFile) {
-        return m.reply(`❌ El usuario @${botNumber} no es un asistente registrado.\n\nBuscando carpeta: /sessions_sub_assistant/${botNumber}`, null, { mentions: [who] })
+        return m.reply(`❌ El usuario @${botNumber} no es un asistente registrado en la carpeta de sesiones.`, null, { mentions: [who] })
     }
 
     global.db.data.chats[m.chat].primaryBot = who
