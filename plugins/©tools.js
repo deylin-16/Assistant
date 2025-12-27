@@ -6,19 +6,19 @@ import path from "path"
 import sharp from "sharp"
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-    if (command === 'hd2') {
+    if (command === 'hd') {
         try {
             const q = m.quoted ? m.quoted : m
             const mime = (q.msg || q).mimetype || q.mediaType || ''
 
             if (!mime || !mime.startsWith('image/')) {
-                return conn.reply(m.chat, `Envía o responde a una imagen con el comando:\n\n${usedPrefix + command} [method] [quality]\n\n*Methods:* 1, 2, 3, 4\n*Quality:* low, medium, high\n\nEjemplo: ${usedPrefix + command} 2 high`, m)
+                return conn.reply(m.chat, `Envía o responde a una imagen.`, m)
             }
 
             const method = parseInt(args[0]) || 1
             const quality = args[1]?.toLowerCase() || 'medium'
 
-            await conn.sendMessage(m.chat, { text: `⌛ Procesando imagen...` }, { quoted: m })
+            //await conn.sendMessage(m.chat, { text: ` Procesando imagen...` }, { quoted: m })
 
             const buffer = await q.download()
             const enhancedBuffer = await ihancer(buffer, { method, size: quality })
@@ -55,9 +55,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }
 }
 
-handler.help = ['hd2', 'toimg']
-handler.tags = ['ia', 'tools']
-handler.command = /^(hd2|toimg)$/i 
+handler.command = /^(hd|toimg)$/i 
 
 export default handler
 
