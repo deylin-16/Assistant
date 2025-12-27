@@ -17,6 +17,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 
             const method = parseInt(args[0]) || 1
             const quality = args[1]?.toLowerCase() || 'medium'
+            await m.react('🍪')
 
             //await conn.sendMessage(m.chat, { text: ` Procesando imagen...` }, { quoted: m })
 
