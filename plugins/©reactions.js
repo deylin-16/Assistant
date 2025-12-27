@@ -51,7 +51,7 @@ let handler = async (m, { conn, command, usedPrefix }) => {
         }, { quoted: m })
 
     } catch (e) {
-        m.reply('❌ Error de contenido', e)
+        m.reply(`❌ Error de contenido ${e}`)
     }
 }
 
