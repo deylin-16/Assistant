@@ -13,8 +13,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     if (!who) return m.reply(`Menciona al bot que quieres dejar como único asistente.\n\nEjemplo: ${usedPrefix + command} @bot\nPara resetear: ${usedPrefix + command} off`)
 
-    const botNumber = who.split('@')[0]
-    const mainBotNumber = conn.user.jid.split('@')[0]
+    const botNumber = who.split('@')[0].replace(/[^0-9]/g, '')
+    const mainBotNumber = conn.user.jid.split('@')[0].replace(/[^0-9]/g, '')
     
     const pathSubBots = path.join(process.cwd(), 'sessions_sub_assistant')
     const pathUserSession = path.join(pathSubBots, botNumber)
@@ -23,13 +23,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const isSubBotFile = fs.existsSync(pathUserSession)
 
     if (!isMainBot && !isSubBotFile) {
-        return m.reply(`❌ El usuario @${botNumber} no es un asistente registrado en el sistema.`, null, { mentions: [who] })
+        return m.reply(`❌ El usuario @${botNumber} no es un asistente registrado.\n\nBuscando carpeta: /sessions_sub_assistant/${botNumber}`, null, { mentions: [who] })
     }
 
     global.db.data.chats[m.chat].primaryBot = who
 
     await conn.sendMessage(m.chat, {
-        text: `✅ *Prioridad Establecida*\n\nSolo @${botNumber} responderá en este grupo. Los demás se mantendrán en espera.`,
+        text: `✅ *Prioridad Establecida*\n\nSolo @${botNumber} responderá en este grupo.`,
         mentions: [who]
     }, { quoted: m })
 }
