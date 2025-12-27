@@ -175,7 +175,7 @@ export async function handler(chatUpdate) {
             args = noPrefix ? noPrefix.split(/\s+/).filter(v => v) : [];
 
             m.plugin = name;
-            if (settings.soloParaJid && m.sender !== settings.soloParaJid) continue;
+        
             if (chat?.isBanned && !isROwner) return;
             if (chat?.modoadmin && !isOwner && !isROwner && m.isGroup && !isAdmin) return;
 
