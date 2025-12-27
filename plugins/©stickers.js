@@ -1,25 +1,27 @@
 import { sticker } from '../lib/sticker.js'
 import { webp2png } from '../lib/webp2mp4.js'
 import Jimp from 'jimp'
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
+import fetch from 'node-fetch'
 
 const isUrl = (text) => text && text.match(/https?:\/\/[^\s]+/i)
 
 const averageBrightness = async (buffer) => {
-  const img = await Jimp.read(buffer)
-  const w = img.bitmap.width
-  const h = img.bitmap.height
-  let total = 0, count = 0
-  for (let x = 0; x < w; x += Math.max(1, Math.floor(w / 50))) {
-    for (let y = 0; y < h; y += Math.max(1, Math.floor(h / 50))) {
-      const { r, g, b } = Jimp.intToRGBA(img.getPixelColor(x, y))
-      total += (0.299 * r + 0.587 * g + 0.114 * b)
-      count++
+  try {
+    const img = await Jimp.read(buffer)
+    const w = img.bitmap.width
+    const h = img.bitmap.height
+    let total = 0, count = 0
+    for (let x = 0; x < w; x += Math.max(1, Math.floor(w / 50))) {
+      for (let y = 0; y < h; y += Math.max(1, Math.floor(h / 50))) {
+        const { r, g, b } = Jimp.intToRGBA(img.getPixelColor(x, y))
+        total += (0.299 * r + 0.587 * g + 0.114 * b)
+        count++
+      }
     }
+    return total / count
+  } catch {
+    return 100
   }
-  return total / count
 }
 
 const makeImageWithText = async (buffer, text, color) => {
@@ -28,7 +30,6 @@ const makeImageWithText = async (buffer, text, color) => {
   const h = image.bitmap.height
   const maxWidth = w - 60
   const font = color === 'white' ? await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE) : await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK)
-
   const lines = []
   const words = text.split(/\s+/)
   let line = ''
@@ -41,14 +42,12 @@ const makeImageWithText = async (buffer, text, color) => {
     } else line = test
   }
   if (line) lines.push(line)
-
   const padding = 20
   const textHeight = lines.length * (Jimp.measureTextHeight(font, 'M', maxWidth) + 20)
   const boxHeight = textHeight + padding * 2
   const boxY = h - boxHeight - 30
   const box = new Jimp(w, boxHeight, color === 'white' ? 0x00000088 : 0xFFFFFF88)
   image.composite(box, 0, boxY)
-
   let y = boxY + padding
   for (let ln of lines) {
     const textW = Jimp.measureText(font, ln)
@@ -61,8 +60,6 @@ const makeImageWithText = async (buffer, text, color) => {
 
 let handler = async (m, { conn, args }) => {
   try {
-    global.getAssistantConfig(conn.user.jid)
-    
     let txt = args.join(' ').trim()
     let q = m.quoted ? m.quoted : m
     let mime = (q.msg || q).mimetype || q.mediaType || ''
@@ -70,39 +67,34 @@ let handler = async (m, { conn, args }) => {
     let user = m.pushName || 'Anónimo'
 
     if (m.quoted && /sticker/.test(q.mtype)) {
-      const webpBuffer = await q.download()
-      const pngUrl = await webp2png(webpBuffer)
-      const res = await fetch(pngUrl)
-      buffer = Buffer.from(await res.arrayBuffer())
-    } else if (/image/.test(mime)) {
+      buffer = await q.download()
+    } else if (/(image|video|gif)/.test(mime)) {
       buffer = await q.download()
     } else if (args[0] && isUrl(args[0])) {
       const res = await fetch(args[0])
       buffer = Buffer.from(await res.arrayBuffer())
     } else {
-      return global.design(conn, m, `🍪 Envía o responde a una *imagen o sticker* con el comando:\n\n*.s <texto>*`)
+      return global.design(conn, m, `🍪 Envía o responde a una *imagen, video o sticker* con el comando:\n\n*.s <texto>*`)
     }
 
     await m.react('🕓')
     let finalBuffer = buffer
 
-    if (txt) {
+    if (txt && !/video|gif|sticker/.test(mime) && !q.isAnimated) {
       const brightness = await averageBrightness(buffer)
       const color = brightness < 128 ? 'white' : 'black'
       finalBuffer = await makeImageWithText(buffer, txt, color)
     }
 
-    const stickerBuffer = await sticker(finalBuffer, false, global.name, user)
-
-    await conn.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m })
+    const stiker = await sticker(finalBuffer, false, global.name(conn), user)
+    if (stiker) await conn.sendMessage(m.chat, { sticker: stiker }, { quoted: m })
+    
     await m.react('✅')
-
   } catch (e) {
     await m.react('✖️')
-    await conn.reply(m.chat, `⚠️ Error al crear el sticker:\n${e.message}`, m)
+    console.error(e)
   }
 }
 
 handler.command = ['s', 'sticker']
-
 export default handler
