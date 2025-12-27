@@ -23,14 +23,11 @@ export async function before(m, { conn, participants, groupMetadata }) {
     const nombreDelGrupo = groupMetadata.subject
     const mentionListText = `@${who.split('@')[0]}`
 
-    let ppUrl = 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
+    let ppUrl
     try {
-        const assistantImg = global.getAssistantConfig(conn.user.jid).assistantImage
-        ppUrl = assistantImg || await conn.profilePictureUrl(who, 'image')
+        ppUrl = await conn.profilePictureUrl(who, 'image')
     } catch {
-        try {
-            ppUrl = await conn.profilePictureUrl(m.chat, 'image')
-        } catch {}
+        ppUrl = global.getAssistantConfig(conn.user.jid).assistantImage || 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
     }
 
     const welcomeText = chat.customWelcome || `bienvenido @user a @grupo somos @total\n\n> Un administrador puede editar esta bienvenida con el comando \`setwelcome\``
