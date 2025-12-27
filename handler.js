@@ -24,21 +24,32 @@ export async function handler(chatUpdate) {
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     if (!m) return;
 
+    if (global.db.data == null) await global.loadDatabase();
+    
+    const chatJid = m.key.remoteJid;
+    if (chatJid.endsWith('@g.us')) {
+        global.db.data.chats[chatJid] ||= { isBanned: false, welcome: true, primaryBot: '' };
+        const chatData = global.db.data.chats[chatJid];
+        const isROwner = global.owner.map(([number]) => number.replace(/[^0-9]/g, '') + '@s.whatsapp.net').includes(m.sender || m.key.participant);
+        const textCommand = m.message?.conversation || m.message?.extendedTextMessage?.text || '';
+        const isPriorityCommand = /^(prioridad|primary|setbot)/i.test(textCommand.trim().slice(1));
+
+        if (chatData?.primaryBot && chatData.primaryBot !== conn.user.jid) {
+            if (!isROwner || !isPriorityCommand) return;
+        }
+    }
+
     const mainBotJid = global.conn?.user?.jid;
     const isSubAssistant = conn.user.jid !== mainBotJid;
 
-    if (m.key.remoteJid.endsWith('@g.us') && isSubAssistant) {
-        const groupMetadata = await conn.groupMetadata(m.key.remoteJid).catch(_ => null);
+    if (chatJid.endsWith('@g.us') && isSubAssistant && !global.db.data.chats[chatJid]?.primaryBot) {
+        const groupMetadata = await conn.groupMetadata(chatJid).catch(_ => null);
         const participants = groupMetadata?.participants || [];
-        const isMainBotPresent = participants.some(p => p.id === mainBotJid);
-        
-        if (isMainBotPresent) return; 
+        if (participants.some(p => p.id === mainBotJid)) return;
     }
 
     m = smsg(conn, m) || m;
     if (!m) return;
-
-    if (global.db.data == null) await global.loadDatabase();
 
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
@@ -77,7 +88,8 @@ export async function handler(chatUpdate) {
             expired: 0,
             autoresponder2: false,
             per: [],
-            welcomeMsg: '¡Bienvenido/a al grupo!'
+            welcomeMsg: '¡Bienvenido/a al grupo!',
+            primaryBot: ''
         };
 
         const settingsJid = conn.user.jid;
@@ -258,4 +270,4 @@ watchFile(file, async () => {
             u.subreloadHandler(false);
         }
     }
-});
+})
