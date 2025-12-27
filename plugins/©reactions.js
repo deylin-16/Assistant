@@ -2,10 +2,10 @@ import fetch from 'node-fetch'
 import fs from 'fs'
 import { join } from 'path'
 
-let handler = async (m, { conn, command, usedPrefix }) => {
+let handler = async (m, { conn, command }) => {
     const path = join(process.cwd(), 'db', 'social_reactions.json')
     
-    if (!fs.existsSync(path)) return m.reply(`❌ No se encontró el archivo en: ${path}`)
+    if (!fs.existsSync(path)) return m.reply('❌ JSON no encontrado')
 
     let dbReacciones = JSON.parse(fs.readFileSync(path, 'utf-8'))
     let cmd = command.toLowerCase()
@@ -40,8 +40,13 @@ let handler = async (m, { conn, command, usedPrefix }) => {
     let videoUrl = data.enlaces[Math.floor(Math.random() * data.enlaces.length)]
 
     try {
-        let response = await fetch(videoUrl)
-        if (!response.ok) throw new Error('Download Failed')
+        let response = await fetch(videoUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+            }
+        })
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
         let buffer = await response.buffer()
 
         await conn.sendMessage(m.chat, {
@@ -52,7 +57,8 @@ let handler = async (m, { conn, command, usedPrefix }) => {
         }, { quoted: m })
 
     } catch (e) {
-        m.reply(`❌ Error al cargar el contenido.`)
+        console.error(e)
+        m.reply(`❌ Error: El servidor del GIF no respondió. Intenta de nuevo.`)
     }
 }
 
